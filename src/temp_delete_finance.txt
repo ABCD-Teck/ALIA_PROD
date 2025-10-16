@@ -1,0 +1,1 @@
+This file is created to delete the Finance.tsx component as it's no longer needed.
