@@ -1,23 +1,153 @@
-# Alia_Web Command Cheatsheet
+# Alia Web Command Cheatsheet
 
-## 🚀 Quick Start
+Your at-a-glance reference for the commands used most often while working on the Alia Web project. Commands assume you are running them from the repository root unless noted otherwise.
 
-### Development Setup
+## Quick Start
+
 ```bash
-# Navigate to project directory
-cd "C:\Users\N3BULA\Desktop\Alia_Web"
-
-# Install dependencies (if needed)
+# Install dependencies
 npm install
 
-# Start both frontend and backend
-npm run dev     # Frontend (React/Vite) on port 3000
-npm run server  # Backend (Express) on port 3001
+# start the React/Vite dev server (http://localhost:3000)
+npm run dev
+
+# start the Express API (http://localhost:3001)
+npm run server
+
+# build static assets for production
+npm run build
 ```
 
-## 📋 Available Commands
+Keep `.env` filled with your local credentials before running any database scripts.
 
-### Frontend Commands
+## Database Operations
+
+All database utilities now live under `scripts/database/` and are grouped by intent.
+
+### Migrations (`scripts/database/migrations`)
+
+```bash
+# add archive flag to interactions
+node scripts/database/migrations/add_archive_column.js
+
+# add Chinese title support
+node scripts/database/migrations/add_title_zh_column.js
+
+# align stock-related columns
+node scripts/database/migrations/migrate_stock_columns.js
+
+# sync annotation schema changes
+node scripts/database/migrations/update_annotation_schema.js
+```
+
+### Data Seeding (`scripts/database/seeding`)
+
+```bash
+# generate sample interactions & opportunities
+node scripts/database/seeding/create_sample_interactions.js
+node scripts/database/seeding/create_opportunities.js
+
+# back-fill future-dated interactions
+node scripts/database/seeding/add_future_interactions.js
+
+# populate auxiliary lookup data
+node scripts/database/seeding/populate_industries.js
+node scripts/database/seeding/seed_byd_data.js
+
+# prepare end-to-end demo task data
+node scripts/database/seeding/CREATE_TEST_TASKS.js
+```
+
+### Diagnostics & Checks (`scripts/database/checks`)
+
+```bash
+# verify schema alignment across databases
+node scripts/database/checks/check_schema.js
+node scripts/database/checks/check_db_structure.js
+
+# validate downstream feature expectations
+node scripts/database/checks/check-interaction-schema.js
+node scripts/database/checks/check_opportunity_schema.js
+node scripts/database/checks/check_news_schema.js
+node scripts/database/checks/check_customer_schema.js
+
+# inspect supporting reference/lookup tables
+node scripts/database/checks/check_reference_tables.js
+node scripts/database/checks/check_reference_tables2.js
+node scripts/database/checks/check_industries.js
+node scripts/database/checks/check_updated_by_column.js
+
+# investigate data quality issues
+node scripts/database/checks/investigate-db.js
+node scripts/database/checks/investigate-mia.js
+```
+
+### Maintenance (`scripts/database/maintenance`)
+
+```bash
+# normalize legacy customer type/status values
+node scripts/database/maintenance/fix_customer_type_status.js
+```
+
+## QA & Verification
+
+Quality assurance scripts now live under `scripts/qa/`.
+
+```bash
+# smoke test API endpoints
+node scripts/qa/test_api_functionality.js
+
+# regression suites
+node scripts/qa/comprehensive_test.js
+node scripts/qa/test_opportunities_and_interactions.js
+node scripts/qa/test_opportunities_direct.js
+
+# targeted validations
+node scripts/qa/test-customer-data.js
+node scripts/qa/test-task-query.js
+node scripts/qa/test-login.js              # uses scripts/qa/data/test-login.json
+node scripts/qa/create-test-interaction.js
+node scripts/qa/verify_translations.js
+```
+
+## Auth Utilities
+
+```bash
+# create a new user with hashed password credentials
+node scripts/auth/create-user.js
+```
+
+## Git Workflow Shortlist
+
+```bash
+# view current status
+git status
+
+# stage and commit changes
+git add .
+git commit -m "feat: describe the change"
+
+# update local branch
+git pull --rebase origin main
+
+# push work to GitHub
+git push origin main
+```
+
+## Housekeeping
+
+```bash
+# remove transient build output
+Remove-Item -Path build -Recurse -Force
+
+# clear the server log between debugging sessions
+Remove-Item logs/server.log
+
+# find large files (>5 MB) if the repo starts to bloat
+Get-ChildItem -Path . -Recurse -File | Where-Object {$_.Length -gt 5MB}
+```
+
+Refer to `docs/process/` for historical implementation notes and troubleshooting guides.
 ```bash
 npm run dev          # Start development server (Vite)
 npm run build        # Build for production
