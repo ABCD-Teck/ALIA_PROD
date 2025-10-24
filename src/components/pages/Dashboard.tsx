@@ -5,7 +5,7 @@ import { ChevronDown, Check, X, Loader2 } from 'lucide-react';
 import { Language, PageType } from '../../App';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Button } from '../ui/button';
-import { customersApi } from '../../services/api';
+import { customersApi, interactionsApi } from '../../services/api';
 
 interface DashboardProps {
   searchQuery: string;
@@ -30,6 +30,7 @@ export function Dashboard({ searchQuery, language, onPageChange }: DashboardProp
   const [totalCustomers, setTotalCustomers] = useState(0);
   const [customersWithContact, setCustomersWithContact] = useState(0);
   const [totalOpportunities, setTotalOpportunities] = useState(0);
+  const [futureInteractionsCount, setFutureInteractionsCount] = useState(0);
 
   const content = {
     zh: {
@@ -91,6 +92,23 @@ export function Dashboard({ searchQuery, language, onPageChange }: DashboardProp
   };
 
   const t = content[language];
+
+  // Fetch future interactions count
+  useEffect(() => {
+    const fetchFutureInteractions = async () => {
+      try {
+        const response = await interactionsApi.getFuture({ limit: 1000 });
+        if (response.data) {
+          setFutureInteractionsCount(response.data.total || response.data.interactions.length);
+        }
+      } catch (err) {
+        console.error('Error fetching future interactions:', err);
+        setFutureInteractionsCount(0);
+      }
+    };
+
+    fetchFutureInteractions();
+  }, []);
 
   // Fetch customers from API
   useEffect(() => {
@@ -240,7 +258,7 @@ export function Dashboard({ searchQuery, language, onPageChange }: DashboardProp
     },
     {
       title: t.stats.futureActivities,
-      value: totalOpportunities.toString(),
+      value: futureInteractionsCount.toString(),
       color: 'text-orange-600'
     },
     {

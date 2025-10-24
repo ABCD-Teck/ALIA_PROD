@@ -208,11 +208,12 @@ export const customersApi = {
 
 // Opportunities API
 export const opportunitiesApi = {
-  getAll: async (params?: { search?: string; limit?: number; offset?: number }) => {
+  getAll: async (params?: { search?: string; limit?: number; offset?: number; include_archived?: boolean }) => {
     const queryParams = new URLSearchParams();
     if (params?.search) queryParams.append('search', params.search);
     if (params?.limit) queryParams.append('limit', params.limit.toString());
     if (params?.offset) queryParams.append('offset', params.offset.toString());
+    if (params?.include_archived) queryParams.append('include_archived', params.include_archived.toString());
 
     const query = queryParams.toString();
     return fetchApi<{
@@ -250,7 +251,7 @@ export const opportunitiesApi = {
   update: async (id: string, data: {
     name?: string;
     description?: string;
-    value?: number;
+    amount?: number;
     currency_id?: string;
     stage?: string;
     probability?: number;
@@ -258,7 +259,7 @@ export const opportunitiesApi = {
     owner_user_id?: string;
     source?: string;
     priority?: string;
-    notes?: string;
+    country_code?: string;
   }) => {
     return fetchApi<any>(`/opportunities/${id}`, {
       method: 'PUT',
@@ -269,6 +270,18 @@ export const opportunitiesApi = {
   delete: async (id: string) => {
     return fetchApi<any>(`/opportunities/${id}`, {
       method: 'DELETE',
+    });
+  },
+
+  archive: async (id: string) => {
+    return fetchApi<any>(`/opportunities/${id}/archive`, {
+      method: 'PATCH',
+    });
+  },
+
+  restore: async (id: string) => {
+    return fetchApi<any>(`/opportunities/${id}/restore`, {
+      method: 'PATCH',
     });
   },
 };
@@ -288,6 +301,116 @@ export const interactionsApi = {
       limit: number;
       offset: number;
     }>(`/interactions${query ? `?${query}` : ''}`);
+  },
+
+  getPast: async (params?: { search?: string; limit?: number; offset?: number }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.search) queryParams.append('search', params.search);
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.offset) queryParams.append('offset', params.offset.toString());
+
+    const query = queryParams.toString();
+    return fetchApi<{
+      interactions: any[];
+      total: number;
+      limit: number;
+      offset: number;
+    }>(`/interactions/past${query ? `?${query}` : ''}`);
+  },
+
+  getFuture: async (params?: { search?: string; limit?: number; offset?: number }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.search) queryParams.append('search', params.search);
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.offset) queryParams.append('offset', params.offset.toString());
+
+    const query = queryParams.toString();
+    return fetchApi<{
+      interactions: any[];
+      total: number;
+      limit: number;
+      offset: number;
+    }>(`/interactions/future${query ? `?${query}` : ''}`);
+  },
+
+  getByCustomerId: async (customerId: string, params?: { limit?: number; offset?: number }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.offset) queryParams.append('offset', params.offset.toString());
+
+    const query = queryParams.toString();
+    return fetchApi<{
+      interactions: any[];
+      total: number;
+      limit: number;
+      offset: number;
+    }>(`/interactions/customer/${customerId}${query ? `?${query}` : ''}`);
+  },
+
+  getById: async (id: string) => {
+    return fetchApi<any>(`/interactions/${id}`);
+  },
+
+  create: async (data: any) => {
+    return fetchApi<any>('/interactions', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  update: async (id: string, data: {
+    interaction_type?: string;
+    subject?: string;
+    description?: string;
+    interaction_date?: string;
+    customer_id?: string;
+    contact_id?: string;
+    duration_minutes?: number;
+    direction?: string;
+    medium?: string;
+    outcome?: string;
+    sentiment?: string;
+    importance?: string;
+    location?: string;
+    private_notes?: string;
+  }) => {
+    return fetchApi<any>(`/interactions/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  delete: async (id: string) => {
+    return fetchApi<any>(`/interactions/${id}`, {
+      method: 'DELETE',
+    });
+  },
+
+  archive: async (id: string) => {
+    return fetchApi<any>(`/interactions/${id}/archive`, {
+      method: 'PATCH',
+    });
+  },
+
+  unarchive: async (id: string) => {
+    return fetchApi<any>(`/interactions/${id}/unarchive`, {
+      method: 'PATCH',
+    });
+  },
+
+  getArchived: async (params?: { search?: string; limit?: number; offset?: number }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.search) queryParams.append('search', params.search);
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.offset) queryParams.append('offset', params.offset.toString());
+
+    const query = queryParams.toString();
+    return fetchApi<{
+      interactions: any[];
+      total: number;
+      limit: number;
+      offset: number;
+    }>(`/interactions/archived/list${query ? `?${query}` : ''}`);
   },
 };
 
@@ -311,17 +434,15 @@ export const tasksApi = {
   },
 
   create: async (data: {
-    title: string;
+    subject: string;
     description?: string;
-    due_at?: string;
+    due_date?: string;
     priority?: string;
     status?: string;
     customer_id?: string;
     opportunity_id?: string;
     contact_id?: string;
-    owner_user_id?: string;
-    notes?: string;
-    tags?: string[];
+    assigned_to?: string;
   }) => {
     return fetchApi<any>('/tasks', {
       method: 'POST',
@@ -330,17 +451,15 @@ export const tasksApi = {
   },
 
   update: async (id: string, data: {
-    title?: string;
+    subject?: string;
     description?: string;
-    due_at?: string;
+    due_date?: string;
     priority?: string;
     status?: string;
     customer_id?: string;
     opportunity_id?: string;
     contact_id?: string;
-    owner_user_id?: string;
-    notes?: string;
-    tags?: string[];
+    assigned_to?: string;
   }) => {
     return fetchApi<any>(`/tasks/${id}`, {
       method: 'PUT',
@@ -350,6 +469,38 @@ export const tasksApi = {
 
   delete: async (id: string) => {
     return fetchApi<any>(`/tasks/${id}`, {
+      method: 'DELETE',
+    });
+  },
+
+  archive: async (id: string) => {
+    return fetchApi<any>(`/tasks/${id}/archive`, {
+      method: 'PATCH',
+    });
+  },
+
+  getArchived: async (params?: { limit?: number; offset?: number }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.offset) queryParams.append('offset', params.offset.toString());
+
+    const query = queryParams.toString();
+    return fetchApi<{
+      tasks: any[];
+      total: number;
+      limit: number;
+      offset: number;
+    }>(`/tasks/archived/list${query ? `?${query}` : ''}`);
+  },
+
+  restore: async (id: string) => {
+    return fetchApi<any>(`/tasks/${id}/restore`, {
+      method: 'PATCH',
+    });
+  },
+
+  permanentDelete: async (id: string) => {
+    return fetchApi<any>(`/tasks/${id}/permanent`, {
       method: 'DELETE',
     });
   },
@@ -425,12 +576,25 @@ export const authApi = {
 
 // Market Insights API
 export const marketInsightsApi = {
+  getBucketTags: async (bucketName: string, params?: { limit?: number }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+
+    const query = queryParams.toString();
+    return fetchApi<{
+      bucket_name: string;
+      tags: any[];
+      total: number;
+    }>(`/market-insights/bucket-tags/${encodeURIComponent(bucketName)}${query ? `?${query}` : ''}`);
+  },
+
   getArticles: async (params?: {
     bucket?: string;
     region?: string;
     importance?: number;
     company?: string;
     search?: string;
+    tag_code?: string; // NEW: Support for bucket tag filtering
     limit?: number;
     offset?: number;
   }) => {
@@ -440,6 +604,7 @@ export const marketInsightsApi = {
     if (params?.importance) queryParams.append('importance', params.importance.toString());
     if (params?.company) queryParams.append('company', params.company);
     if (params?.search) queryParams.append('search', params.search);
+    if (params?.tag_code) queryParams.append('tag_code', params.tag_code); // NEW
     if (params?.limit) queryParams.append('limit', params.limit.toString());
     if (params?.offset) queryParams.append('offset', params.offset.toString());
 
@@ -499,6 +664,31 @@ export const marketInsightsApi = {
       countries: any[];
     }>(`/market-insights/countries${query ? `?${query}` : ''}`);
   },
+
+  getCustomerNews: async (customerName: string, params?: { limit?: number; offset?: number }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.offset) queryParams.append('offset', params.offset.toString());
+
+    const query = queryParams.toString();
+    return fetchApi<{
+      articles: any[];
+      total: number;
+      limit: number;
+      offset: number;
+      customer_name: string;
+    }>(`/market-insights/customer/${encodeURIComponent(customerName)}${query ? `?${query}` : ''}`);
+  },
+
+  updateTranslation: async (articleId: string, translations: { title_zh?: string; summary_zh?: string }) => {
+    return fetchApi<{
+      success: boolean;
+      article: any;
+    }>(`/market-insights/article/${articleId}/translation`, {
+      method: 'PATCH',
+      body: JSON.stringify(translations),
+    });
+  },
 };
 
 // Translation API
@@ -520,5 +710,167 @@ export const translationApi = {
 
   test: async () => {
     return fetchApi<any>('/translate/test');
+  },
+};
+
+// Annotations API
+export const annotationsApi = {
+  getByCustomerId: async (customerId: string, params?: { limit?: number; offset?: number }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.offset) queryParams.append('offset', params.offset.toString());
+
+    const query = queryParams.toString();
+    return fetchApi<{
+      annotations: any[];
+      total: number;
+      limit: number;
+      offset: number;
+    }>(`/annotations/customer/${customerId}${query ? `?${query}` : ''}`);
+  },
+
+  getById: async (id: string) => {
+    return fetchApi<any>(`/annotations/${id}`);
+  },
+
+  create: async (data: {
+    customer_id: string;
+    title: string;
+    status: string;
+    content?: string;
+  }) => {
+    return fetchApi<any>('/annotations', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  update: async (id: string, data: {
+    title?: string;
+    status?: string;
+    content?: string;
+  }) => {
+    return fetchApi<any>(`/annotations/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  delete: async (id: string) => {
+    return fetchApi<any>(`/annotations/${id}`, {
+      method: 'DELETE',
+    });
+  },
+};
+
+// Documents API
+export const documentsApi = {
+  getByCustomerId: async (customerId: string, category?: string) => {
+    const queryParams = new URLSearchParams();
+    if (category) queryParams.append('category', category);
+
+    const query = queryParams.toString();
+    return fetchApi<{
+      documents: any[];
+      total: number;
+    }>(`/documents/customer/${customerId}${query ? `?${query}` : ''}`);
+  },
+
+  getById: async (id: string) => {
+    return fetchApi<any>(`/documents/${id}`);
+  },
+
+  upload: async (file: File, customerId: string, category: string, description?: string) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('customer_id', customerId);
+    formData.append('category', category);
+    if (description) formData.append('description', description);
+
+    const token = getAccessToken();
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/documents/upload`, {
+        method: 'POST',
+        headers,
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.error || errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return { data };
+    } catch (error) {
+      console.error(`Document upload error:`, error);
+      return {
+        error: error instanceof Error ? error.message : 'An unknown error occurred',
+      };
+    }
+  },
+
+  download: async (id: string) => {
+    const token = getAccessToken();
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/documents/${id}/download`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.error || errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      // Get the filename from Content-Disposition header or use a default
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = `document_${id}`;
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
+        if (filenameMatch) {
+          filename = filenameMatch[1];
+        }
+      }
+
+      // Create blob and download
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      return { data: { success: true } };
+    } catch (error) {
+      console.error(`Document download error:`, error);
+      return {
+        error: error instanceof Error ? error.message : 'An unknown error occurred',
+      };
+    }
+  },
+
+  update: async (id: string, data: { category?: string; description?: string }) => {
+    return fetchApi<any>(`/documents/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  delete: async (id: string) => {
+    return fetchApi<any>(`/documents/${id}`, {
+      method: 'DELETE',
+    });
   },
 };

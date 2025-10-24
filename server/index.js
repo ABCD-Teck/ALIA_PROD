@@ -17,6 +17,8 @@ const opportunitiesRouter = require('./routes/opportunities');
 const interactionsRouter = require('./routes/interactions');
 const tasksRouter = require('./routes/tasks');
 const financialStatementsRouter = require('./routes/financialStatements');
+const documentsRouter = require('./routes/documents');
+const annotationsRouter = require('./routes/annotations');
 
 const marketInsightsRouter = require('./routes/marketInsights');
 const translateRouter = require('./routes/translate');
@@ -30,6 +32,8 @@ app.use('/api/opportunities', opportunitiesRouter);
 app.use('/api/interactions', interactionsRouter);
 app.use('/api/tasks', tasksRouter);
 app.use('/api/financial-statements', financialStatementsRouter);
+app.use('/api/documents', documentsRouter);
+app.use('/api/annotations', annotationsRouter);
 app.use('/api/market-insights', marketInsightsRouter);
 app.use('/api/translate', translateRouter);
 app.use('/api/mia-pipeline', miaPipelineRouter);

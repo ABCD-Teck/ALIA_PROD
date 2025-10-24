@@ -6,8 +6,9 @@ import { Label } from '../ui/label';
 import { Switch } from '../ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Separator } from '../ui/separator';
-import { User, Bell, Shield, Globe, Palette, Save } from 'lucide-react';
+import { User, Bell, Shield, Globe, Palette, Save, DollarSign } from 'lucide-react';
 import { Language } from '../../App';
+import { useCurrency, CURRENCIES } from '../../contexts/CurrencyContext';
 
 interface SettingsProps {
   searchQuery: string;
@@ -15,6 +16,8 @@ interface SettingsProps {
 }
 
 export function Settings({ searchQuery, language }: SettingsProps) {
+  const { selectedCurrency, setSelectedCurrency, refreshRates, lastUpdated } = useCurrency();
+
   const [settings, setSettings] = useState({
     firstName: 'Andrew',
     lastName: 'Chen',
@@ -46,6 +49,7 @@ export function Settings({ searchQuery, language }: SettingsProps) {
       notifications: '通知',
       privacy: '隐私',
       appearance: '外观',
+      currency: '货币设置',
       firstName: '名',
       lastName: '姓',
       email: '邮箱',
@@ -61,6 +65,9 @@ export function Settings({ searchQuery, language }: SettingsProps) {
       theme: '主题',
       language: '语言',
       timezone: '时区',
+      preferredCurrency: '首选货币',
+      refreshRates: '刷新汇率',
+      lastUpdated: '最后更新',
       save: '保存',
       themes: {
         light: '浅色',
@@ -78,6 +85,7 @@ export function Settings({ searchQuery, language }: SettingsProps) {
       notifications: 'Notifications',
       privacy: 'Privacy',
       appearance: 'Appearance',
+      currency: 'Currency Settings',
       firstName: 'First Name',
       lastName: 'Last Name',
       email: 'Email',
@@ -93,6 +101,9 @@ export function Settings({ searchQuery, language }: SettingsProps) {
       theme: 'Theme',
       language: 'Language',
       timezone: 'Timezone',
+      preferredCurrency: 'Preferred Currency',
+      refreshRates: 'Refresh Rates',
+      lastUpdated: 'Last Updated',
       save: 'Save',
       themes: {
         light: 'Light',
@@ -169,6 +180,12 @@ export function Settings({ searchQuery, language }: SettingsProps) {
       title: t.appearance,
       icon: Palette,
       searchable: [t.appearance, t.theme, t.language, t.timezone]
+    },
+    {
+      id: 'currency',
+      title: t.currency,
+      icon: DollarSign,
+      searchable: [t.currency, t.preferredCurrency, t.refreshRates]
     }
   ];
 
@@ -333,7 +350,7 @@ export function Settings({ searchQuery, language }: SettingsProps) {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="fr">{t.languages.fr}</SelectItem>
+                          <SelectItem value="zh">{t.languages.zh}</SelectItem>
                           <SelectItem value="en">{t.languages.en}</SelectItem>
                         </SelectContent>
                       </Select>
@@ -348,12 +365,66 @@ export function Settings({ searchQuery, language }: SettingsProps) {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Europe/Paris">Europe/Paris</SelectItem>
+                          <SelectItem value="Asia/Shanghai">Asia/Shanghai</SelectItem>
                           <SelectItem value="America/New_York">America/New_York</SelectItem>
+                          <SelectItem value="Europe/London">Europe/London</SelectItem>
                           <SelectItem value="Asia/Tokyo">Asia/Tokyo</SelectItem>
                           <SelectItem value="UTC">UTC</SelectItem>
                         </SelectContent>
                       </Select>
+                    </div>
+                  </div>
+                )}
+
+                {section.id === 'currency' && (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>{t.preferredCurrency}</Label>
+                      <Select
+                        value={selectedCurrency}
+                        onValueChange={setSelectedCurrency}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(CURRENCIES).map(([code, currency]) => (
+                            <SelectItem key={code} value={code}>
+                              {currency.symbol} {currency.name} ({code})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        {language === 'zh'
+                          ? '选择您的首选货币。所有金额将自动转换为此货币。'
+                          : 'Select your preferred currency. All amounts will be automatically converted to this currency.'}
+                      </p>
+                    </div>
+                    <Separator />
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label>{t.refreshRates}</Label>
+                          {lastUpdated && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {t.lastUpdated}: {lastUpdated.toLocaleString(language === 'zh' ? 'zh-CN' : 'en-US')}
+                            </p>
+                          )}
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={refreshRates}
+                        >
+                          {language === 'zh' ? '刷新' : 'Refresh'}
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {language === 'zh'
+                          ? '汇率每24小时自动更新一次。'
+                          : 'Exchange rates are automatically updated every 24 hours.'}
+                      </p>
                     </div>
                   </div>
                 )}

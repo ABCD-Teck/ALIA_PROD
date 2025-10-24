@@ -128,177 +128,6 @@ const timeFrameOptions = [
   { id: '90d', label_zh: '三月内', label_en: 'Last 3 Months' }
 ];
 
-const dailyReportNews = [
-  {
-    id: '1',
-    category: 'macro',
-    title_zh: '英格兰银行行长：贸易分裂将拖累全球经济',
-    title_en: 'Bank of England Governor: Trade Fragmentation Will Drag Down Global Economy',
-    content_zh: '英格兰银行行长安德鲁·贝利（ANDREW BAILEY）在布鲁塞尔的一个智库会议上警告称，全球贸易的紧张关系可能将对世界经济增长产生负面影响。他指出，贸易分裂对全球增长是有害的。英格兰银行本月早些时候将英国今年的经济增长预测下调至0.7%，原因包括美国对英国商品可能征收的关税以及特朗普当选更具攻击性的贸易政策带来的不确定性。特别是对本国商业制造业的贸易政策来说的不确定性。',
-    content_en: 'Bank of England Governor Andrew Bailey warned at a think tank meeting in Brussels that global trade tensions could have a negative impact on world economic growth. He pointed out that trade fragmentation is harmful to global growth. The Bank of England downgraded its economic growth forecast for the UK this year to 0.7% earlier this month, citing uncertainty from potential US tariffs on UK goods and Trump\'s more aggressive trade policies.',
-    source_zh: '华尔街日报',
-    source_en: 'Wall Street Journal',
-    publishTime: '2025-02-19 10:41:00',
-    likes: 10,
-    isLiked: false,
-    isBookmarked: false
-  },
-  {
-    id: '2',
-    category: 'macro',
-    title_zh: '澳大利亚储备银行自2020年以来首次降息，加入全球宽松潮流',
-    title_en: 'Reserve Bank of Australia Cuts Interest Rates for First Time Since 2020, Joins Global Easing Trend',
-    content_zh: '澳大利亚储备银行（RBA）于2025年2月18日宣布将官方现金利率下调25个基点至4.10%，这是自2020年以来的首次降息。标志着其加入全球央行的宽松阵营。RBA行长米歇尔·布洛克（MICHELE BULLOCK）表示，尽管通胀有所缓解，但美国经济的可能性，以及整体经济的整体影响可能仍然。他指出经济复苏已经显示出缓慢的迹象，通胀压力的目标下降、劳动力市场整体上减少了的紧张状况，RBA对整体经济显著影响的预测下降约912亿元（约7元），尽管林业资源可控，全球经济中通胀预期虽然有一定程度的改善。',
-    content_en: 'The Reserve Bank of Australia (RBA) announced on February 18, 2025, a 25 basis point cut to the official cash rate to 4.10%, the first rate cut since 2020, marking its entry into the global central bank easing camp. RBA Governor Michele Bullock indicated that while inflation has eased, economic recovery has shown slow signs with controlled inflation expectations and reduced labor market tensions.',
-    source_zh: '华尔街日报',
-    source_en: 'Wall Street Journal',
-    publishTime: '2025-02-19 05:59:00',
-    likes: 10,
-    isLiked: false,
-    isBookmarked: false
-  },
-  {
-    id: '3',
-    category: 'macro',
-    title_zh: '新西兰储备银行进一步降息，警告全球贸易风险',
-    title_en: 'Reserve Bank of New Zealand Cuts Rates Further, Warns of Global Trade Risks',
-    content_zh: '新西兰储备银行（RBNZ）于周三将官方现金利率（OCR）下调50个基点至3.75%，继续推进减息的努力，并警告国际贸易威胁局势、全球增长放缓及地缘政治冲突等风险出现恶化趋势。自去年8月以来，RBNZ已累计降息125个基点，经济增长持续低迷、住房市场逐步回暖，但通胀水平料保持上升。但通胀威胁面临着地缘政治的不确定性可能的持续高企，RBNZ认为有可能进一步降息的空间，但委员会经过充分考量，认为有利于中期内维持价格稳定的可能性较好。',
-    content_en: 'The Reserve Bank of New Zealand (RBNZ) cut the official cash rate (OCR) by 50 basis points to 3.75% on Wednesday, continuing its easing efforts while warning of deteriorating risks including international trade threats, global growth slowdown, and geopolitical conflicts. Since August last year, RBNZ has cut rates by a cumulative 125 basis points, with economic growth remaining subdued and housing market gradually recovering, but inflation levels expected to remain elevated.',
-    source_zh: '华尔街日报',
-    source_en: 'Wall Street Journal',
-    publishTime: '2025-02-19 01:29:00',
-    likes: 10,
-    isLiked: false,
-    isBookmarked: false
-  },
-  {
-    id: '4',
-    category: 'industry',
-    title_zh: '韩国动员数十亿支持芯片产业应对美国压力',
-    title_en: 'South Korea Mobilizes Billions to Support Chip Industry Against US Pressure',
-    content_zh: '三星电子资本支出JAIHYUK SONG在昨外半导体体（SEMICON）上表示，全球半导体产业面临来自美国的贸易压力。特别是对于芯片对美芯片出口将减少25%关税，韩国对此高度重视，决定推出360亿韩元（约240亿欧元）的紧急支持计划。该计划在有利的小型和中型企业的产品转移到制造。韩国半导体协会表示，该政策基本上是为了防范40亿美元，运营汽车产业。政府还计划在14个国家（包括有利的国际）设立专门外事，以减少对美国和中国的依赖。与此同时，三星USK HYNIX等企业对美国的投资都将不允许，因为特别政府对有美的计划显示不满。',
-    content_en: 'Samsung Electronics capital expenditure JAIHYUK SONG stated at the semiconductor conference (SEMICON) that the global semiconductor industry faces trade pressure from the United States. Particularly regarding chip export restrictions to the US with 25% tariffs, South Korea attaches great importance and decided to launch a 36 billion won (about 24 billion euros) emergency support plan. The plan focuses on facilitating small and medium enterprises\' product transitions to manufacturing.',
-    source_zh: '亚洲半导体',
-    source_en: 'Asia Semiconductor',
-    publishTime: '2025-02-19 18:34:30',
-    likes: 10,
-    isLiked: false,
-    isBookmarked: false
-  },
-  {
-    id: '8',
-    category: 'industry',
-    title_zh: '阿里巴巴1100亿美元的AI乐观情绪面临盈利考验',
-    title_en: 'Alibaba\'s $110 Billion AI Optimism Faces Profitability Test',
-    content_zh: '阿里巴巴集团控股有限公司将在周四的财报发布中面临关键考验，因为投资的DEEPSEEK的排名册上表明1100亿美元。自1月以来，阿里巴巴在人工智能领域，创始人马云与高层的关照，以及与宇宙公司合作的情况下，提升几乎上涨了60%。尽管面临监管的担忧，投资者对财报反应的第一时间，投资者对AI将帮助收入60%，分析师预测，阿里巴巴在12月的销最额期比65.5%，净利润继续保持16.6%。特别关注它业务，行计具新业务收入大增长9.7%。投资者大增整制到阿里巴巴的同时AI需求大优先，并应对求来自百度、腾讯、华为等等对手的压力。',
-    content_en: 'Alibaba Group Holding will face a key test in Thursday\'s earnings report, as investment in DEEPSEEK shows $110 billion. Since January, Alibaba has risen nearly 60% in the AI field with support from founder Jack Ma and senior management, and cooperation with universe companies. Despite regulatory concerns, investors expect AI to help revenue grow 60%, with analysts predicting Alibaba\'s December sales growth of 65.5% and continued net profit growth of 16.6%.',
-    source_zh: '彭博社',
-    source_en: 'Bloomberg',
-    publishTime: '2025-02-19 15:00:00',
-    likes: 10,
-    isLiked: false,
-    isBookmarked: false
-  },
-  {
-    id: '9',
-    category: 'industry',
-    title_zh: 'DEEPSEEK 被指与字节跳动共享用户数据',
-    title_en: 'DEEPSEEK Accused of Sharing User Data with ByteDance',
-    content_zh: '韩国报告中的人工上智能初创公司DEEPSEEK与TIKTOK母公司字节跳动共享用户数据。韩国数据保护监管机构确认DEEPSEEK与字节跳动有密亲系，并且数据保护问员，将在周末保护应用人员下降。DEEPSEEK在1月因新慢的商议生成式AI助引起市场震荡，导致英伟达市值大跌1.2万亿美元。英伟达个人信息保护委员会表示，尚未确认DEEPSEEK员工可司网络访问应用。韩国个人信息保护委员会表示，除了确认此DEEPSEEK员工字节跳动融更监督基础及其程度，批判有原办办，中国国家情报法允许中国政府收政府个人数据，美台呼吁台湾被出版政府关部分个人台湾个安全美国数据之前的2个新获时候。',
-    content_en: 'Korean reports indicate that AI startup DEEPSEEK has shared user data with TikTok\'s parent company ByteDance. South Korean data protection regulators confirmed that DEEPSEEK has close ties with ByteDance, raising data protection concerns. DEEPSEEK caused market turmoil in January with its new AI assistant, leading to NVIDIA\'s market value dropping by $1.2 trillion. The Personal Information Protection Commission stated they have not yet confirmed DEEPSEEK staff\'s network access to applications.',
-    source_zh: '亚洲IT工会',
-    source_en: 'Asian IT Union',
-    publishTime: '2025-02-19 11:40:23',
-    likes: 10,
-    isLiked: false,
-    isBookmarked: false
-  },
-  {
-    id: '5',
-    category: 'commodities',
-    title_zh: '国际油价连续三日上涨，布伦特原油突破85美元',
-    title_en: 'Oil Prices Rise for Third Consecutive Day, Brent Crude Breaks $85',
-    content_zh: '国际油价延续涨势，布伦特原油期货价格突破每桶85美元，创下近三个月来新高。分析师认为，地缘政治紧张局势和OPEC+减产措施是推动油价上涨的主要因素。',
-    content_en: 'International oil prices continued their upward trend, with Brent crude futures breaking $85 per barrel, reaching a three-month high. Analysts believe geopolitical tensions and OPEC+ production cuts are the main factors driving oil price increases.',
-    source_zh: '能源情报',
-    source_en: 'Energy Intelligence',
-    publishTime: '2025-02-19 14:20:00',
-    likes: 15,
-    isLiked: false,
-    isBookmarked: true
-  },
-  {
-    id: '6',
-    category: 'politics',
-    title_zh: '人工智能成为国家间的战场',
-    title_en: 'Artificial Intelligence Becomes Battlefield Between Nations',
-    content_zh: 'ELON MUSK发布GROK3 AI助手，标志着美国在AI领域的领导地位。与此同时，中国的DEEPSEEK在韩国市场的渗透引发了地缘政治紧张的关注。法国微软高管CHRISTOPHE AULNETTE指出，AI正成为各技术大竞争的焦点。美国国会议员JD VANCE认为美国在AI领导地位方面不可忽视，而欧盟委员会主席URSULA VON DER LEYEN则呼吁欧洲发展中立的AI技术。计划向南欧2000亿元新行资投。AI的竞争不仅是技术之争，更是国际间的政治竞争格局的重塑。',
-    content_en: 'ELON MUSK released GROK3 AI assistant, marking US leadership in the AI field. Meanwhile, China\'s DEEPSEEK penetration in the Korean market has raised geopolitical tensions. French Microsoft executive CHRISTOPHE AULNETTE pointed out that AI is becoming a focal point of major technology competition. US Congressman JD VANCE believes US leadership in AI cannot be ignored, while EU Commission President URSULA VON DER LEYEN calls for Europe to develop neutral AI technology.',
-    source_zh: '法国商业时报',
-    source_en: 'French Business Times',
-    publishTime: '2025-02-19 17:21:37',
-    likes: 10,
-    isLiked: false,
-    isBookmarked: false
-  },
-  {
-    id: '10',
-    category: 'politics',
-    title_zh: '拉夫罗夫称会谈 "非常有用" - 泽连斯基推进沙特之行',
-    title_en: 'Lavrov Calls Talks "Very Useful" - Zelensky Advances Saudi Trip',
-    content_zh: '俄罗斯外交部长拉夫罗夫近五年，美国新任国��卿马���·卢比奥（MARCO RUBIO）访问沙特，与俄罗斯外长拉夫罗夫（SERGEJ LAWROW）会谈。乌克兰联邦总统保护人办理健康布·哈罗夫计划与马克苏未来对乌克兰内的重要色，呼吁不应在乌克兰与后伺进行和谈的问题上妥协。乌克兰总统统总泽连斯基（VOLODYMYR ZELENSKYY）推荐了原定3月10日的沙特之行，批评俄罗斯参与的信息不负责沙。与此同时，土耳其总统埃尔���安（RECEP TAYYIP ERDOGAN）重申对乌克兰的支持，并表示愿意在土耳其更技术求来的相关谈判。',
-    content_en: 'Russian Foreign Minister Lavrov, nearly five years later, US Secretary of State Marco Rubio visited Saudi Arabia and met with Russian Foreign Minister Sergej Lawrow. Ukrainian President Volodymyr Zelensky advanced his planned March 10 trip to Saudi Arabia, criticizing Russian participation as irresponsible. Meanwhile, Turkish President Recep Tayyip Erdogan reaffirmed support for Ukraine and expressed willingness to facilitate related negotiations in Turkey.',
-    source_zh: '俄国世界报',
-    source_en: 'Russian World News',
-    publishTime: '2025-02-19 16:20:00',
-    likes: 10,
-    isLiked: false,
-    isBookmarked: false
-  },
-  {
-    id: '11',
-    category: 'politics',
-    title_zh: '普京呼吁俄美沙三方讨论全球能源市场',
-    title_en: 'Putin Calls for Russia-US-Saudi Trilateral Discussion on Global Energy Market',
-    content_zh: '俄罗斯总统表示，全球能源市场需要俄罗斯、美国和沙特阿拉伯之间的三方讨论。此言论是在半导体制裁时段发表的，旨在结果与克兰试验排针对俄罗斯会议发表的，旨在结合马克斯战略讨论全球能源市场。马克苏拉峰论现场沙特重要。上次重京与美国总裁特别周静和沙特国王保保帝的言话发生在近五年前，当时OPEC及其盟友在应对因间前冠病毒病情改变的石油需求下降面临生产削减的挑战。普京计划在未来几个月内召集韩国王储与土耳，感谢他们对美俄沙对话进度适应反对意见。',
-    content_en: 'Russian President stated that the global energy market needs trilateral discussions between Russia, the United States, and Saudi Arabia. This statement was made during semiconductor sanctions period, aiming to combine strategic discussions on global energy markets. The last meeting between Putin, US President, and Saudi King occurred nearly five years ago, when OPEC and its allies faced production cut challenges amid declining oil demand due to the coronavirus pandemic.',
-    source_zh: '多维社',
-    source_en: 'Duowei News',
-    publishTime: '2025-02-19 15:31:50',
-    likes: 10,
-    isLiked: false,
-    isBookmarked: false
-  },
-  {
-    id: '7',
-    category: 'society',
-    title_zh: '人工智能技术在医疗领域应用快速发展，监管框架待完善',
-    title_en: 'AI Technology Applications in Healthcare Developing Rapidly, Regulatory Framework Needs Improvement',
-    content_zh: '最新研究显示，人工智能在医疗诊断、药物研发等领域的应用正在快速发展。专家呼吁建立更完善的监管框架，确保AI技术安全有效地服务于公众健康。',
-    content_en: 'Latest research shows that artificial intelligence applications in medical diagnosis and drug development are developing rapidly. Experts call for establishing a more comprehensive regulatory framework to ensure AI technology serves public health safely and effectively.',
-    source_zh: '科技日报',
-    source_en: 'Science Daily',
-    publishTime: '2025-02-19 17:45:00',
-    likes: 22,
-    isLiked: true,
-    isBookmarked: true
-  },
-  {
-    id: '12',
-    category: 'commodities',
-    title_zh: '国际油价连续三日上涨，布伦特原油突破85美元',
-    title_en: 'Oil Prices Rise for Third Consecutive Day, Brent Crude Breaks $85',
-    content_zh: '国际油价延续涨势，布伦特原油期货价格突破每桶85美元，创下近三个月来新高。分析师认为，地缘政治紧张局势和OPEC+减产措施是推动油价上涨的主要因素。',
-    content_en: 'International oil prices continued their upward trend, with Brent crude futures breaking $85 per barrel, reaching a three-month high. Analysts believe geopolitical tensions and OPEC+ production cuts are the main factors driving oil price increases.',
-    source_zh: '能源情报',
-    source_en: 'Energy Intelligence',
-    publishTime: '2025-02-19 14:20:00',
-    likes: 15,
-    isLiked: false,
-    isBookmarked: true
-  }
-];
-
 // Mapping from Level 1 categories to MIA bucket names
 const categoryToBucketMap: Record<string, string> = {
   'macro': 'Macro & Central Banks',
@@ -371,65 +200,89 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
 
   // Load bucket-specific tags when bucket changes
   useEffect(() => {
+    console.log('Bucket selection changed:', selectedLevel1);
     if (selectedLevel1 !== 'all') {
+      console.log('Loading tags for bucket:', selectedLevel1);
       loadBucketTags(selectedLevel1);
     } else {
+      console.log('Clearing bucket tags - no bucket selected');
       setBucketTags([]);
     }
   }, [selectedLevel1, selectedTimeFrame]);
 
-  // Load tags for a specific bucket within the time frame
+  // Load tags for a specific bucket using the new bucket_tag API
   const loadBucketTags = async (bucketName: string) => {
     try {
-      // Get time frame filter for API call
-      const timeFrameFilter = getTimeFrameFilter();
+      console.log('Loading bucket tags from API for bucket:', bucketName);
 
-      // First get articles for this bucket to see which tags are used
-      const response = await marketInsightsApi.getArticles({
-        bucket: bucketName,
-        limit: 1000 // Get more articles to analyze tags
-      });
+      // Use the new bucket_tag API endpoint
+      const response = await marketInsightsApi.getBucketTags(bucketName, { limit: 20 });
 
-      if (response.data && response.data.articles.length > 0) {
-        // Extract and count tags from articles
-        const tagCounts: Record<string, number> = {};
-
-        response.data.articles.forEach((article: any) => {
-          if (article.keywords && Array.isArray(article.keywords)) {
-            article.keywords.forEach((keyword: string) => {
-              tagCounts[keyword] = (tagCounts[keyword] || 0) + 1;
-            });
-          }
-        });
-
-        // Convert to array and sort by frequency, take top 5
-        const sortedTags = Object.entries(tagCounts)
-          .map(([tag, count]) => ({ name: tag, frequency: count }))
-          .sort((a, b) => b.frequency - a.frequency)
-          .slice(0, 5);
-
-        // Format for dropdown
-        const formattedTags = [
-          { id: 'all', label_zh: '全部标签', label_en: 'All Tags', frequency: 0 },
-          ...sortedTags.map(tag => ({
-            id: tag.name,
-            label_zh: tag.name,
-            label_en: tag.name,
-            frequency: tag.frequency
-          }))
-        ];
-
-        setBucketTags(formattedTags);
+      if (response.data && response.data.tags) {
+        console.log(`Loaded ${response.data.tags.length} tags for bucket: ${bucketName}`, response.data.tags);
+        setBucketTags(response.data.tags);
       } else {
+        console.warn('No bucket tags data received from API');
         setBucketTags([
           { id: 'all', label_zh: '全部标签', label_en: 'All Tags', frequency: 0 }
         ]);
       }
     } catch (err) {
-      console.error('Failed to load bucket tags:', err);
-      setBucketTags([
-        { id: 'all', label_zh: '全部标签', label_en: 'All Tags', frequency: 0 }
-      ]);
+      console.error('Failed to load bucket tags from API:', err);
+
+      // Fallback to mock tags based on the selected bucket
+      const mockTagsByBucket: Record<string, any[]> = {
+        'Macro & Central Banks': [
+          { id: 'all', label_zh: '全部标签', label_en: 'All Tags', frequency: 0 },
+          { id: 'interest_rates', label_zh: '利率', label_en: 'Interest Rates', frequency: 45 },
+          { id: 'monetary_policy', label_zh: '货币政策', label_en: 'Monetary Policy', frequency: 38 },
+          { id: 'inflation', label_zh: '通胀', label_en: 'Inflation', frequency: 32 },
+          { id: 'federal_reserve', label_zh: '美联储', label_en: 'Federal Reserve', frequency: 28 },
+          { id: 'ecb', label_zh: '欧洲央行', label_en: 'ECB', frequency: 24 }
+        ],
+        'Banking & Regulation': [
+          { id: 'all', label_zh: '全部标签', label_en: 'All Tags', frequency: 0 },
+          { id: 'basel_iii', label_zh: '巴塞尔协议III', label_en: 'Basel III', frequency: 22 },
+          { id: 'compliance', label_zh: '合规', label_en: 'Compliance', frequency: 19 },
+          { id: 'stress_test', label_zh: '压力测试', label_en: 'Stress Test', frequency: 16 },
+          { id: 'capital_requirements', label_zh: '资本要求', label_en: 'Capital Requirements', frequency: 14 },
+          { id: 'risk_management', label_zh: '风险管理', label_en: 'Risk Management', frequency: 12 }
+        ],
+        'Markets': [
+          { id: 'all', label_zh: '全部标签', label_en: 'All Tags', frequency: 0 },
+          { id: 'stock_market', label_zh: '股市', label_en: 'Stock Market', frequency: 35 },
+          { id: 'bond_market', label_zh: '债券市场', label_en: 'Bond Market', frequency: 29 },
+          { id: 'volatility', label_zh: '波动性', label_en: 'Volatility', frequency: 26 },
+          { id: 'trading', label_zh: '交易', label_en: 'Trading', frequency: 23 },
+          { id: 'market_outlook', label_zh: '市场前景', label_en: 'Market Outlook', frequency: 20 }
+        ],
+        'Fintech & Payments': [
+          { id: 'all', label_zh: '全部标签', label_en: 'All Tags', frequency: 0 },
+          { id: 'digital_payments', label_zh: '数字支付', label_en: 'Digital Payments', frequency: 31 },
+          { id: 'blockchain', label_zh: '区块链', label_en: 'Blockchain', frequency: 27 },
+          { id: 'cryptocurrency', label_zh: '加密货币', label_en: 'Cryptocurrency', frequency: 25 },
+          { id: 'mobile_banking', label_zh: '移动银行', label_en: 'Mobile Banking', frequency: 22 },
+          { id: 'fintech_innovation', label_zh: '金融科技创新', label_en: 'Fintech Innovation', frequency: 18 }
+        ],
+        'Tech, AI & Data Policy': [
+          { id: 'all', label_zh: '全部标签', label_en: 'All Tags', frequency: 0 },
+          { id: 'artificial_intelligence', label_zh: '人工智能', label_en: 'Artificial Intelligence', frequency: 42 },
+          { id: 'data_privacy', label_zh: '数据隐私', label_en: 'Data Privacy', frequency: 36 },
+          { id: 'tech_regulation', label_zh: '科技监管', label_en: 'Tech Regulation', frequency: 33 },
+          { id: 'machine_learning', label_zh: '机器学习', label_en: 'Machine Learning', frequency: 29 },
+          { id: 'gdpr', label_zh: 'GDPR', label_en: 'GDPR', frequency: 25 }
+        ]
+      };
+
+      const fallbackTags = mockTagsByBucket[bucketName] || [
+        { id: 'all', label_zh: '全部标签', label_en: 'All Tags', frequency: 0 },
+        { id: 'general_topic', label_zh: '一般话题', label_en: 'General Topic', frequency: 15 },
+        { id: 'policy_update', label_zh: '政策更新', label_en: 'Policy Update', frequency: 12 },
+        { id: 'market_analysis', label_zh: '市场分析', label_en: 'Market Analysis', frequency: 10 }
+      ];
+
+      console.log(`Using fallback tags for bucket: ${bucketName}`, fallbackTags);
+      setBucketTags(fallbackTags);
     }
   };
 
@@ -530,11 +383,11 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
       const regionName = selectedLevel3 === 'all' ? undefined :
                          regionToMIAMap[selectedLevel3] || selectedLevel3;
 
-      // Combine searchQuery with custom tags and selected tag
+      // Get tag code for the selected level2 (bucket tag)
+      const tagCode = selectedLevel2 === 'all' ? undefined : selectedLevel2;
+
+      // Combine searchQuery with custom tags (but NOT the selected tag since it's now handled by tag_code)
       let searchTerms = searchQuery || '';
-      if (selectedLevel2 !== 'all') {
-        searchTerms = searchTerms ? `${searchTerms} ${selectedLevel2}` : selectedLevel2;
-      }
       if (customTags.length > 0) {
         searchTerms = searchTerms ? `${searchTerms} ${customTags.join(' ')}` : customTags.join(' ');
       }
@@ -547,6 +400,7 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
         bucket: bucketName,
         region: regionName,
         search: searchTerms,
+        tag_code: tagCode, // NEW: Use tag_code instead of adding to search
         importance: 1, // Minimum importance to ensure quality
         limit: limit,
         offset: currentOffset
@@ -635,6 +489,23 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
             [type]: translated
           }
         }));
+
+        // Save translation to database (async, non-blocking)
+        if (type === 'title' || type === 'content') {
+          const dbField = type === 'title' ? 'title_zh' : 'summary_zh';
+
+          marketInsightsApi.updateTranslation(articleId, {
+            [dbField]: translated
+          }).then(result => {
+            if (result.data?.success) {
+              console.log(`[AutoTranslate] Saved ${type} translation to database for article ${articleId}`);
+            } else {
+              console.warn(`[AutoTranslate] Failed to save ${type} translation to database:`, result.error);
+            }
+          }).catch(error => {
+            console.error(`[AutoTranslate] Error saving ${type} translation to database:`, error);
+          });
+        }
 
         return translated;
       }

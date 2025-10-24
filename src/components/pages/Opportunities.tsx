@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -6,18 +6,26 @@ import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { 
-  ArrowUpDown
+import {
+  ArrowUpDown,
+  Save,
+  AlertCircle
 } from 'lucide-react';
 import { Language } from '../../App';
+import * as api from '../../services/api';
 
 interface OpportunitiesProps {
   searchQuery: string;
   language: Language;
+  onUnsavedChangesChange?: (hasChanges: boolean) => void;
+  onLoadingChange?: (isLoading: boolean) => void;
+  triggerSave?: boolean;
+  onSaveComplete?: () => void;
+  onViewOpportunity?: (opportunityId: string) => void;
 }
 
 type Priority = 'High' | 'Medium' | 'Low';
-type Status = 'Lead' | 'Proposal' | 'Negotiation' | 'Won' | 'Lost';
+type Stage = 'Lead' | 'Proposal' | 'Negotiation' | 'Won' | 'Lost';
 
 interface Opportunity {
   id: number;
@@ -38,7 +46,7 @@ interface Opportunity {
   currency: string;
   salesOwner: string;
   salesOwnerCn?: string;
-  status: Status;
+  stage: Stage;
   lastUpdate: {
     date: string;
     note: string;
@@ -49,129 +57,104 @@ interface Opportunity {
   createdDate: string;
 }
 
-const mockOpportunities: Opportunity[] = [
-  {
-    id: 1,
-    customer: 'Acme Corporation',
-    customerCn: '埃克米公司',
-    opportunityName: 'Enterprise Software License',
-    opportunityNameCn: '企业软件许可',
-    description: 'Complete enterprise software solution with 3-year support',
-    descriptionCn: '完整的企业软件解决方案，包含3年技术支持',
-    region: 'Europe',
-    regionCn: '欧洲',
-    country: 'Germany',
-    countryCn: '德国',
-    partner: 'Tech Solutions GmbH',
-    partnerCn: '科技解决方案有限公司',
-    priority: 'High',
-    amount: 125000,
-    currency: 'EUR',
-    salesOwner: 'Andrew Chen',
-    status: 'Negotiation',
-    lastUpdate: {
-      date: '2025-01-15',
-      note: 'Client requested additional security features. Preparing revised proposal.',
-      noteCn: '客户要求增加安全功能。正在准备修订提案。'
-    },
-    actionPlan: 'Schedule security review meeting by Jan 20. Present updated proposal by Jan 25.',
-    actionPlanCn: '1月20日前安排安全审查会议。1月25日前提交更新提案。',
-    createdDate: '2025-01-01'
-  },
-  {
-    id: 2,
-    customer: 'TechStart Solutions',
-    customerCn: '科技创业',
-    opportunityName: 'Cloud Migration Project',
-    opportunityNameCn: '云迁移项目',
-    description: 'Migration of legacy systems to cloud infrastructure',
-    descriptionCn: '将传统系统迁移到云基础设施',
-    region: 'Asia Pacific',
-    regionCn: '亚太地区',
-    country: 'Singapore',
-    countryCn: '新加坡',
-    partner: 'Cloud Partners Asia',
-    partnerCn: '亚洲云合作伙伴',
-    priority: 'Medium',
-    amount: 78000,
-    currency: 'USD',
-    salesOwner: 'Sarah Johnson',
-    status: 'Proposal',
-    lastUpdate: {
-      date: '2025-01-12',
-      note: 'Submitted detailed migration plan. Awaiting client feedback.',
-      noteCn: '已提交详细迁移计划。等待客户反馈。'
-    },
-    actionPlan: 'Follow up on proposal by Jan 18. Prepare demo environment.',
-    actionPlanCn: '1月18日前跟进提案。准备演示环境。',
-    createdDate: '2025-01-01'
-  },
-  {
-    id: 3,
-    customer: 'Global Industries',
-    customerCn: '环球工业',
-    opportunityName: 'Digital Transformation',
-    opportunityNameCn: '数字化转型',
-    description: 'Complete digital transformation initiative',
-    descriptionCn: '完整的数字化转型计划',
-    region: 'North America',
-    regionCn: '北美',
-    country: 'United States',
-    countryCn: '美国',
-    partner: 'Innovation Partners US',
-    partnerCn: '美国创新合作伙伴',
-    priority: 'High',
-    amount: 200000,
-    currency: 'USD',
-    salesOwner: 'Michael Smith',
-    status: 'Lead',
-    lastUpdate: {
-      date: '2025-01-10',
-      note: 'Initial discovery call completed. Strong interest expressed.',
-      noteCn: '完成初步调研通话。客户表现出浓厚兴趣。'
-    },
-    actionPlan: 'Conduct needs assessment workshop by Jan 22. Prepare solution architecture.',
-    actionPlanCn: '1月22日前开展需求评估研讨会。准备解决方案架构。',
-    createdDate: '2025-01-05'
-  },
-  {
-    id: 4,
-    customer: 'Alibaba Cloud',
-    customerCn: '阿里云',
-    opportunityName: 'AI Infrastructure Setup',
-    opportunityNameCn: 'AI基础设施建设',
-    description: 'Complete AI infrastructure for data processing',
-    descriptionCn: '完整的AI基础设施用于数据处理',
-    region: 'Asia Pacific',
-    regionCn: '亚太地区',
-    country: 'China',
-    countryCn: '中国',
-    partner: 'Tech Partners China',
-    partnerCn: '中国技术合作伙伴',
-    priority: 'High',
-    amount: 300000,
-    currency: 'CNY',
-    salesOwner: '李明',
-    salesOwnerCn: '李明',
-    status: 'Lead',
-    lastUpdate: {
-      date: '2025-01-20',
-      note: 'Initial meeting completed. Technical requirements gathered.',
-      noteCn: '完成初步会议。收集技术需求。'
-    },
-    actionPlan: 'Prepare technical proposal by Jan 30. Schedule technical review.',
-    actionPlanCn: '1月30日前准备技术提案。安排技术评审。',
-    createdDate: '2025-01-18'
-  }
-];
-
-export function Opportunities({ searchQuery, language }: OpportunitiesProps) {
-  const [opportunities, setOpportunities] = useState<Opportunity[]>(mockOpportunities);
+export function Opportunities({
+  searchQuery,
+  language,
+  onUnsavedChangesChange,
+  onLoadingChange,
+  triggerSave,
+  onSaveComplete,
+  onViewOpportunity
+}: OpportunitiesProps) {
+  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [selectedOpportunity, setSelectedOpportunity] = useState<string>('all');
   const [sortField, setSortField] = useState<keyof Opportunity>('createdDate');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
-  const [editingCell, setEditingCell] = useState<{ id: number; field: string } | null>(null);
-  const [editValue, setEditValue] = useState<string>('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch opportunities from API
+  const fetchOpportunities = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await api.opportunitiesApi.getAll({ limit: 100 });
+      if (response.data && response.data.opportunities) {
+        // Transform database opportunities to match the Opportunity interface
+        const transformedOpportunities = response.data.opportunities.map((opp: any) => {
+          // Capitalize first letter for priority and status
+          const capitalizePriority = (priority: string): Priority => {
+            const p = (priority || 'medium').toLowerCase();
+            return (p.charAt(0).toUpperCase() + p.slice(1)) as Priority;
+          };
+
+          const capitalizeStage = (stage: string): Stage => {
+            // Map backend stage values to frontend stage values
+            const stageToStageMap: Record<string, Stage> = {
+              'prospecting': 'Lead',
+              'proposal': 'Proposal',
+              'negotiation': 'Negotiation',
+              'closed_won': 'Won',
+              'closed_lost': 'Lost',
+              'qualification': 'Lead', // Map qualification to Lead for display
+            };
+
+            const normalizedStage = (stage || 'prospecting').toLowerCase();
+            return stageToStageMap[normalizedStage] || 'Lead';
+          };
+
+          return {
+            id: opp.opportunity_id || opp.id,
+            customer: opp.company_name || '',
+            customerCn: opp.company_name || '',
+            opportunityName: opp.name || '',
+            opportunityNameCn: opp.name || '',
+            description: opp.description || '',
+            descriptionCn: opp.description || '',
+            region: opp.region_name || '',
+            regionCn: opp.region_name || '',
+            country: opp.country_code || '',
+            countryCn: opp.country_code || '',
+            partner: '',
+            partnerCn: '',
+            priority: capitalizePriority(opp.priority),
+            amount: parseFloat(opp.amount) || 0,
+            currency: opp.currency_code || opp.currency_symbol || 'USD',
+            salesOwner: '',
+            salesOwnerCn: '',
+            stage: capitalizeStage(opp.stage),
+            lastUpdate: {
+              date: opp.updated_at ? new Date(opp.updated_at).toISOString().split('T')[0] : '',
+              note: opp.description || '',
+              noteCn: opp.description || '',
+            },
+            actionPlan: opp.description || '',
+            actionPlanCn: opp.description || '',
+            createdDate: opp.created_at ? new Date(opp.created_at).toISOString().split('T')[0] : '',
+          };
+        });
+        setOpportunities(transformedOpportunities);
+      } else if (response.error) {
+        setError(response.error);
+      }
+    } catch (err) {
+      console.error('Error fetching opportunities:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch opportunities');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchOpportunities();
+  }, []);
+
+  // Notify parent component of loading state
+  useEffect(() => {
+    if (onLoadingChange) {
+      onLoadingChange(loading);
+    }
+  }, [loading, onLoadingChange]);
 
   const content = {
     zh: {
@@ -196,6 +179,13 @@ export function Opportunities({ searchQuery, language }: OpportunitiesProps) {
       wonDeals: '成交数',
       wonRevenue: '成交金额',
       wonRate: '成交率',
+      makeChange: '执行更改',
+      confirmChanges: '确认更改',
+      unsavedChanges: '未保存的更改',
+      unsavedWarning: '您有未保存的更改。请在离开前执行更改。',
+      changesSaved: '更改已成功保存',
+      savingChanges: '正在保存更改...',
+      noChanges: '您没有未保存的更改',
       priorities: {
         High: '高',
         Medium: '中',
@@ -237,6 +227,13 @@ export function Opportunities({ searchQuery, language }: OpportunitiesProps) {
       wonDeals: 'Won Deals',
       wonRevenue: 'Won Revenue',
       wonRate: 'Won Rate',
+      makeChange: 'Make Change',
+      confirmChanges: 'Confirm Changes',
+      unsavedChanges: 'Unsaved Changes',
+      unsavedWarning: 'You have unsaved changes. Please make changes before leaving.',
+      changesSaved: 'Changes saved successfully',
+      savingChanges: 'Saving changes...',
+      noChanges: 'You have no unsaved changes',
       priorities: {
         High: 'High',
         Medium: 'Medium',
@@ -268,7 +265,7 @@ export function Opportunities({ searchQuery, language }: OpportunitiesProps) {
         (opp.opportunityNameCn && opp.opportunityNameCn.includes(searchQuery)) ||
         opp.salesOwner.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (opp.salesOwnerCn && opp.salesOwnerCn.includes(searchQuery)) ||
-        opp.status.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        opp.stage.toLowerCase().includes(searchQuery.toLowerCase()) ||
         opp.region.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (opp.regionCn && opp.regionCn.includes(searchQuery)) ||
         opp.country.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -319,8 +316,8 @@ export function Opportunities({ searchQuery, language }: OpportunitiesProps) {
     }
   };
 
-  const getStatusColor = (status: Status) => {
-    switch (status) {
+  const getStageColor = (stage: Stage) => {
+    switch (stage) {
       case 'Lead':
         return 'bg-blue-100 text-blue-800';
       case 'Proposal':
@@ -357,7 +354,7 @@ export function Opportunities({ searchQuery, language }: OpportunitiesProps) {
 
   const calculateWonRevenue = () => {
     return sortedOpportunities
-      .filter(opp => opp.status === 'Won')
+      .filter(opp => opp.stage === 'Won')
       .reduce((total, opp) => {
         // Convert to USD for calculation (simplified conversion)
         const usdAmount = opp.currency === 'EUR' ? opp.amount * 1.1 : 
@@ -367,54 +364,13 @@ export function Opportunities({ searchQuery, language }: OpportunitiesProps) {
       }, 0);
   };
 
-  const handleCellClick = (id: number, field: string, currentValue: string) => {
-    setEditingCell({ id, field });
-    setEditValue(currentValue);
+  // Handle double-click on row to view opportunity details
+  const handleRowDoubleClick = (opportunityId: number | string) => {
+    if (onViewOpportunity) {
+      onViewOpportunity(opportunityId.toString());
+    }
   };
 
-  const handleCellSave = () => {
-    if (!editingCell) return;
-    
-    setOpportunities(prev => prev.map(opp => {
-      if (opp.id === editingCell.id) {
-        if (editingCell.field === 'amount') {
-          return { ...opp, [editingCell.field]: parseFloat(editValue) || 0 };
-        }
-        if (editingCell.field === 'lastUpdateNote') {
-          return { 
-            ...opp, 
-            lastUpdate: { 
-              ...opp.lastUpdate, 
-              note: editValue,
-              noteCn: editValue // For simplicity, using same value for both languages
-            } 
-          };
-        }
-        return { ...opp, [editingCell.field]: editValue };
-      }
-      return opp;
-    }));
-    
-    setEditingCell(null);
-    setEditValue('');
-  };
-
-  const handleCellCancel = () => {
-    setEditingCell(null);
-    setEditValue('');
-  };
-
-  const handlePriorityChange = (id: number, priority: Priority) => {
-    setOpportunities(prev => prev.map(opp => 
-      opp.id === id ? { ...opp, priority } : opp
-    ));
-  };
-
-  const handleStatusChange = (id: number, status: Status) => {
-    setOpportunities(prev => prev.map(opp => 
-      opp.id === id ? { ...opp, status } : opp
-    ));
-  };
 
   return (
     <div className="h-full flex flex-col">
@@ -440,16 +396,10 @@ export function Opportunities({ searchQuery, language }: OpportunitiesProps) {
         {/* Summary Card */}
         <Card>
           <CardContent className="pt-6">
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               <div>
                 <span className="text-muted-foreground">{t.totalOpportunities}：</span>
                 <span className="font-medium">{sortedOpportunities.length}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground">{t.totalValue}：</span>
-                <span className="font-medium">
-                  ${calculateTotalValue().toLocaleString()}
-                </span>
               </div>
               <div>
                 <span className="text-muted-foreground">{t.wonDeals}：</span>
@@ -472,6 +422,7 @@ export function Opportunities({ searchQuery, language }: OpportunitiesProps) {
             </div>
           </CardContent>
         </Card>
+
       </div>
 
       {/* Opportunities Table */}
@@ -485,7 +436,7 @@ export function Opportunities({ searchQuery, language }: OpportunitiesProps) {
         ) : (
           <Card>
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
+              <div className="overflow-auto max-h-[600px]">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -503,7 +454,6 @@ export function Opportunities({ searchQuery, language }: OpportunitiesProps) {
                       </TableHead>
                       <TableHead>{t.region}</TableHead>
                       <TableHead>{t.country}</TableHead>
-                      <TableHead>{t.partner}</TableHead>
                       <TableHead className="cursor-pointer" onClick={() => handleSort('priority')}>
                         <div className="flex items-center space-x-1">
                           <span>{t.priority}</span>
@@ -516,7 +466,6 @@ export function Opportunities({ searchQuery, language }: OpportunitiesProps) {
                           <ArrowUpDown className="h-3 w-3" />
                         </div>
                       </TableHead>
-                      <TableHead>{t.salesOwner}</TableHead>
                       <TableHead className="cursor-pointer" onClick={() => handleSort('status')}>
                         <div className="flex items-center space-x-1">
                           <span>{t.status}</span>
@@ -524,285 +473,51 @@ export function Opportunities({ searchQuery, language }: OpportunitiesProps) {
                         </div>
                       </TableHead>
                       <TableHead>{t.lastUpdate}</TableHead>
-                      <TableHead>{t.actionPlan}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {sortedOpportunities.map((opportunity) => (
-                      <TableRow key={opportunity.id}>
+                      <TableRow
+                        key={opportunity.id}
+                        className="cursor-pointer hover:bg-green-50 transition-colors"
+                        onDoubleClick={() => handleRowDoubleClick(opportunity.id)}
+                      >
                         <TableCell>
-                          {editingCell?.id === opportunity.id && editingCell?.field === 'customer' ? (
-                            <Input
-                              value={editValue}
-                              onChange={(e) => setEditValue(e.target.value)}
-                              onBlur={handleCellSave}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleCellSave();
-                                if (e.key === 'Escape') handleCellCancel();
-                              }}
-                              autoFocus
-                              className="h-8"
-                            />
-                          ) : (
-                            <span 
-                              className="cursor-pointer hover:bg-gray-100 px-2 py-1 rounded"
-                              onClick={() => handleCellClick(
-                                opportunity.id, 
-                                'customer', 
-                                language === 'zh' && opportunity.customerCn ? opportunity.customerCn : opportunity.customer
-                              )}
-                            >
-                              {language === 'zh' && opportunity.customerCn ? opportunity.customerCn : opportunity.customer}
-                            </span>
-                          )}
+                          {language === 'zh' && opportunity.customerCn ? opportunity.customerCn : opportunity.customer}
                         </TableCell>
                         <TableCell>
-                          {editingCell?.id === opportunity.id && editingCell?.field === 'opportunityName' ? (
-                            <Input
-                              value={editValue}
-                              onChange={(e) => setEditValue(e.target.value)}
-                              onBlur={handleCellSave}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleCellSave();
-                                if (e.key === 'Escape') handleCellCancel();
-                              }}
-                              autoFocus
-                              className="h-8"
-                            />
-                          ) : (
-                            <span 
-                              className="cursor-pointer hover:bg-gray-100 px-2 py-1 rounded max-w-[180px] block"
-                              onClick={() => handleCellClick(
-                                opportunity.id, 
-                                'opportunityName', 
-                                language === 'zh' && opportunity.opportunityNameCn ? opportunity.opportunityNameCn : opportunity.opportunityName
-                              )}
-                            >
-                              {language === 'zh' && opportunity.opportunityNameCn ? opportunity.opportunityNameCn : opportunity.opportunityName}
-                            </span>
-                          )}
+                          <div className="max-w-[180px] truncate">
+                            {language === 'zh' && opportunity.opportunityNameCn ? opportunity.opportunityNameCn : opportunity.opportunityName}
+                          </div>
                         </TableCell>
                         <TableCell>
-                          {editingCell?.id === opportunity.id && editingCell?.field === 'region' ? (
-                            <Input
-                              value={editValue}
-                              onChange={(e) => setEditValue(e.target.value)}
-                              onBlur={handleCellSave}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleCellSave();
-                                if (e.key === 'Escape') handleCellCancel();
-                              }}
-                              autoFocus
-                              className="h-8"
-                            />
-                          ) : (
-                            <span 
-                              className="cursor-pointer hover:bg-gray-100 px-2 py-1 rounded"
-                              onClick={() => handleCellClick(
-                                opportunity.id, 
-                                'region', 
-                                language === 'zh' && opportunity.regionCn ? opportunity.regionCn : opportunity.region
-                              )}
-                            >
-                              {language === 'zh' && opportunity.regionCn ? opportunity.regionCn : opportunity.region}
-                            </span>
-                          )}
+                          {language === 'zh' && opportunity.regionCn ? opportunity.regionCn : opportunity.region}
                         </TableCell>
                         <TableCell>
-                          {editingCell?.id === opportunity.id && editingCell?.field === 'country' ? (
-                            <Input
-                              value={editValue}
-                              onChange={(e) => setEditValue(e.target.value)}
-                              onBlur={handleCellSave}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleCellSave();
-                                if (e.key === 'Escape') handleCellCancel();
-                              }}
-                              autoFocus
-                              className="h-8"
-                            />
-                          ) : (
-                            <span 
-                              className="cursor-pointer hover:bg-gray-100 px-2 py-1 rounded"
-                              onClick={() => handleCellClick(
-                                opportunity.id, 
-                                'country', 
-                                language === 'zh' && opportunity.countryCn ? opportunity.countryCn : opportunity.country
-                              )}
-                            >
-                              {language === 'zh' && opportunity.countryCn ? opportunity.countryCn : opportunity.country}
-                            </span>
-                          )}
+                          {language === 'zh' && opportunity.countryCn ? opportunity.countryCn : opportunity.country}
                         </TableCell>
                         <TableCell>
-                          {editingCell?.id === opportunity.id && editingCell?.field === 'partner' ? (
-                            <Input
-                              value={editValue}
-                              onChange={(e) => setEditValue(e.target.value)}
-                              onBlur={handleCellSave}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleCellSave();
-                                if (e.key === 'Escape') handleCellCancel();
-                              }}
-                              autoFocus
-                              className="h-8"
-                            />
-                          ) : (
-                            <span 
-                              className="cursor-pointer hover:bg-gray-100 px-2 py-1 rounded whitespace-nowrap text-sm"
-                              onClick={() => handleCellClick(
-                                opportunity.id, 
-                                'partner', 
-                                language === 'zh' && opportunity.partnerCn ? opportunity.partnerCn : opportunity.partner
-                              )}
-                            >
-                              {language === 'zh' && opportunity.partnerCn ? opportunity.partnerCn : opportunity.partner}
-                            </span>
-                          )}
+                          <Badge className={getPriorityColor(opportunity.priority)}>
+                            {t.priorities[opportunity.priority]}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {formatCurrency(opportunity.amount, opportunity.currency)}
                         </TableCell>
                         <TableCell>
-                          <Select 
-                            value={opportunity.priority} 
-                            onValueChange={(value: Priority) => handlePriorityChange(opportunity.id, value)}
-                          >
-                            <SelectTrigger className="h-8 w-auto">
-                              <Badge className={getPriorityColor(opportunity.priority)}>
-                                {t.priorities[opportunity.priority]}
-                              </Badge>
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="High">{t.priorities.High}</SelectItem>
-                              <SelectItem value="Medium">{t.priorities.Medium}</SelectItem>
-                              <SelectItem value="Low">{t.priorities.Low}</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </TableCell>
-                        <TableCell>
-                          {editingCell?.id === opportunity.id && editingCell?.field === 'amount' ? (
-                            <Input
-                              type="number"
-                              value={editValue}
-                              onChange={(e) => setEditValue(e.target.value)}
-                              onBlur={handleCellSave}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleCellSave();
-                                if (e.key === 'Escape') handleCellCancel();
-                              }}
-                              autoFocus
-                              className="h-8"
-                            />
-                          ) : (
-                            <span 
-                              className="cursor-pointer hover:bg-gray-100 px-2 py-1 rounded font-medium"
-                              onClick={() => handleCellClick(opportunity.id, 'amount', opportunity.amount.toString())}
-                            >
-                              {formatCurrency(opportunity.amount, opportunity.currency)}
-                            </span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {editingCell?.id === opportunity.id && editingCell?.field === 'salesOwner' ? (
-                            <Input
-                              value={editValue}
-                              onChange={(e) => setEditValue(e.target.value)}
-                              onBlur={handleCellSave}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleCellSave();
-                                if (e.key === 'Escape') handleCellCancel();
-                              }}
-                              autoFocus
-                              className="h-8"
-                            />
-                          ) : (
-                            <span 
-                              className="cursor-pointer hover:bg-gray-100 px-2 py-1 rounded"
-                              onClick={() => handleCellClick(
-                                opportunity.id, 
-                                'salesOwner', 
-                                language === 'zh' && opportunity.salesOwnerCn ? opportunity.salesOwnerCn : opportunity.salesOwner
-                              )}
-                            >
-                              {language === 'zh' && opportunity.salesOwnerCn ? opportunity.salesOwnerCn : opportunity.salesOwner}
-                            </span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Select 
-                            value={opportunity.status} 
-                            onValueChange={(value: Status) => handleStatusChange(opportunity.id, value)}
-                          >
-                            <SelectTrigger className="h-8 w-auto">
-                              <Badge className={getStatusColor(opportunity.status)}>
-                                {t.statuses[opportunity.status]}
-                              </Badge>
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Lead">{t.statuses.Lead}</SelectItem>
-                              <SelectItem value="Proposal">{t.statuses.Proposal}</SelectItem>
-                              <SelectItem value="Negotiation">{t.statuses.Negotiation}</SelectItem>
-                              <SelectItem value="Won">{t.statuses.Won}</SelectItem>
-                              <SelectItem value="Lost">{t.statuses.Lost}</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <Badge className={getStageColor(opportunity.stage)}>
+                            {t.statuses[opportunity.stage]}
+                          </Badge>
                         </TableCell>
                         <TableCell>
                           <div className="max-w-[200px]">
                             <div className="text-sm">
                               {opportunity.lastUpdate.date}
                             </div>
-                            {editingCell?.id === opportunity.id && editingCell?.field === 'lastUpdateNote' ? (
-                              <Input
-                                value={editValue}
-                                onChange={(e) => setEditValue(e.target.value)}
-                                onBlur={handleCellSave}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') handleCellSave();
-                                  if (e.key === 'Escape') handleCellCancel();
-                                }}
-                                autoFocus
-                                className="h-8 mt-1"
-                              />
-                            ) : (
-                              <div 
-                                className="text-xs text-muted-foreground whitespace-normal break-words cursor-pointer hover:bg-gray-100 px-1 py-1 rounded"
-                                onClick={() => handleCellClick(
-                                  opportunity.id, 
-                                  'lastUpdateNote', 
-                                  language === 'zh' && opportunity.lastUpdate.noteCn ? opportunity.lastUpdate.noteCn : opportunity.lastUpdate.note
-                                )}
-                              >
-                                {language === 'zh' && opportunity.lastUpdate.noteCn ? opportunity.lastUpdate.noteCn : opportunity.lastUpdate.note}
-                              </div>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {editingCell?.id === opportunity.id && editingCell?.field === 'actionPlan' ? (
-                            <Input
-                              value={editValue}
-                              onChange={(e) => setEditValue(e.target.value)}
-                              onBlur={handleCellSave}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleCellSave();
-                                if (e.key === 'Escape') handleCellCancel();
-                              }}
-                              autoFocus
-                              className="h-8"
-                            />
-                          ) : (
-                            <div 
-                              className="min-w-[120px] max-w-[450px] cursor-pointer hover:bg-gray-100 px-2 py-1 rounded"
-                              onClick={() => handleCellClick(
-                                opportunity.id, 
-                                'actionPlan', 
-                                language === 'zh' && opportunity.actionPlanCn ? opportunity.actionPlanCn : opportunity.actionPlan
-                              )}
-                            >
-                              <div className="text-sm whitespace-normal break-words">
-                                {language === 'zh' && opportunity.actionPlanCn ? opportunity.actionPlanCn : opportunity.actionPlan}
-                              </div>
+                            <div className="text-xs text-muted-foreground whitespace-normal break-words">
+                              {language === 'zh' && opportunity.lastUpdate.noteCn ? opportunity.lastUpdate.noteCn : opportunity.lastUpdate.note}
                             </div>
-                          )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}

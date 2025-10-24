@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Globe, ChevronDown, Plus, Bell } from 'lucide-react';
+import { Search, Globe, ChevronDown, Plus, Bell, Archive } from 'lucide-react';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
@@ -21,6 +21,9 @@ interface NavbarProps {
   onNewTask?: () => void;
   onNewEvent?: () => void;
   onNewContact?: () => void;
+  onViewArchivedOpportunities?: () => void;
+  onViewArchivedInteractions?: () => void;
+  onViewArchivedTasks?: () => void;
 }
 
 const searchPlaceholders = {
@@ -29,11 +32,14 @@ const searchPlaceholders = {
     'market-insights': '搜索热门资讯...',
     'customer-insights': '按姓名、行业、标签搜索...',
     opportunities: '按姓名、客户、销售代表、状态搜索...',
+    'archived-opportunities': '搜索归档商机...',
     'create-opportunity': '搜索客户、产品、方案...',
     interactions: '按客户、日期、类型搜索...',
+    'archived-interactions': '搜索归档互动记录...',
     'create-interaction': '搜索公司、客户、产品...',
     'interaction-detail': '搜索详情内容...',
     'task-manager': '按主题、状态、截止日期搜索...',
+    'archived-tasks': '搜索归档任务...',
     'create-task': '搜索任务模板、负责人...',
     calendar: '按标题、日期、事件类型搜索...',
     'create-event': '搜索事件模板、参与者...',
@@ -48,11 +54,14 @@ const searchPlaceholders = {
     'market-insights': 'Search market insights...',
     'customer-insights': 'Search by name, industry, tags...',
     opportunities: 'Search by name, client, sales rep, status...',
+    'archived-opportunities': 'Search archived opportunities...',
     'create-opportunity': 'Search customers, products, solutions...',
     interactions: 'Search by customer, date, type...',
+    'archived-interactions': 'Search archived interactions...',
     'create-interaction': 'Search companies, customers, products...',
     'interaction-detail': 'Search detail content...',
     'task-manager': 'Search by subject, status, due date...',
+    'archived-tasks': 'Search archived tasks...',
     'create-task': 'Search task templates, assignees...',
     calendar: 'Search by title, date, event type...',
     'create-event': 'Search event templates, attendees...',
@@ -64,16 +73,19 @@ const searchPlaceholders = {
   }
 };
 
-export function Navbar({ 
-  currentPage, 
-  language, 
-  onLanguageChange, 
-  searchQuery, 
+export function Navbar({
+  currentPage,
+  language,
+  onLanguageChange,
+  searchQuery,
   onSearchChange,
   onPageChange,
   customerInsightsTab,
   onNewCustomer,
   onNewOpportunity,
+  onViewArchivedOpportunities,
+  onViewArchivedInteractions,
+  onViewArchivedTasks,
   onNewInteraction,
   onNewTask,
   onNewEvent,
@@ -85,22 +97,7 @@ export function Navbar({
 
   // 渲染页面特定的操作按钮
   const renderPageActions = () => {
-    if (currentPage === 'market-insights') {
-      const timeOptions = language === 'zh' ? 
-        { 'today': '本日', 'week': '本周', 'month': '本月', 'year': '本年' } :
-        { 'today': 'Today', 'week': 'This Week', 'month': 'This Month', 'year': 'This Year' };
-      
-      return (
-        <div className="flex items-center gap-4">
-          <select className="border border-gray-200 rounded-lg px-3 py-2 text-sm">
-            <option value="today">{timeOptions['today']}</option>
-            <option value="week">{timeOptions['week']}</option>
-            <option value="month">{timeOptions['month']}</option>
-            <option value="year">{timeOptions['year']}</option>
-          </select>
-        </div>
-      );
-    } else if (currentPage === 'customer-insights') {
+    if (currentPage === 'customer-insights') {
       const buttonText = language === 'zh' ? '新建客户' : 'New Customer';
       return (
         <Button variant="teal" onClick={onNewCustomer}>
@@ -109,28 +106,49 @@ export function Navbar({
         </Button>
       );
     } else if (currentPage === 'opportunities') {
-      const buttonText = language === 'zh' ? '新建商机' : 'New Opportunity';
+      const newButtonText = language === 'zh' ? '新建商机' : 'New Opportunity';
+      const archiveButtonText = language === 'zh' ? '归档' : 'Archive';
       return (
-        <Button variant="teal" onClick={onNewOpportunity}>
-          <Plus className="mr-2 h-4 w-4" />
-          {buttonText}
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={onViewArchivedOpportunities}>
+            <Archive className="mr-2 h-4 w-4" />
+            {archiveButtonText}
+          </Button>
+          <Button variant="teal" onClick={onNewOpportunity}>
+            <Plus className="mr-2 h-4 w-4" />
+            {newButtonText}
+          </Button>
+        </div>
       );
     } else if (currentPage === 'interactions') {
-      const buttonText = language === 'zh' ? '新建互动' : 'New Interaction';
+      const newButtonText = language === 'zh' ? '新建互动' : 'New Interaction';
+      const archiveButtonText = language === 'zh' ? '归档' : 'Archive';
       return (
-        <Button variant="teal" onClick={onNewInteraction}>
-          <Plus className="mr-2 h-4 w-4" />
-          {buttonText}
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={onViewArchivedInteractions}>
+            <Archive className="mr-2 h-4 w-4" />
+            {archiveButtonText}
+          </Button>
+          <Button variant="teal" onClick={onNewInteraction}>
+            <Plus className="mr-2 h-4 w-4" />
+            {newButtonText}
+          </Button>
+        </div>
       );
     } else if (currentPage === 'task-manager') {
-      const buttonText = language === 'zh' ? '新建任务' : 'New Task';
+      const newButtonText = language === 'zh' ? '新建任务' : 'New Task';
+      const archiveButtonText = language === 'zh' ? '归档' : 'Archive';
       return (
-        <Button variant="teal" onClick={onNewTask}>
-          <Plus className="mr-2 h-4 w-4" />
-          {buttonText}
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={onViewArchivedTasks}>
+            <Archive className="mr-2 h-4 w-4" />
+            {archiveButtonText}
+          </Button>
+          <Button variant="teal" onClick={onNewTask}>
+            <Plus className="mr-2 h-4 w-4" />
+            {newButtonText}
+          </Button>
+        </div>
       );
     } else if (currentPage === 'calendar') {
       const buttonText = language === 'zh' ? '新建日程' : 'New Event';

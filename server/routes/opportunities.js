@@ -6,27 +6,35 @@ const { authenticateToken } = require('../middleware/auth');
 // GET all opportunities
 router.get('/', authenticateToken, async (req, res) => {
   try {
-    const { search, limit = 50, offset = 0 } = req.query;
+    const { search, limit = 50, offset = 0, include_archived } = req.query;
 
     let query = `
       SELECT
         o.*,
         c.company_name,
         cu.code as currency_code,
-        cu.code as currency_symbol
+        cu.code as currency_symbol,
+        r.region_name as region_name
       FROM opportunity o
       LEFT JOIN customer c ON o.customer_id = c.customer_id
       LEFT JOIN currency cu ON o.currency_id = cu.currency_id
+      LEFT JOIN region r ON o.region_id = r.region_id
       WHERE 1=1
     `;
 
     const queryParams = [];
 
+    // Filter out archived opportunities by default
+    if (include_archived !== 'true') {
+      query += ` AND (o.is_deleted = FALSE OR o.is_deleted IS NULL)`;
+    }
+
     if (search) {
+      const paramIndex = queryParams.length + 1;
       query += ` AND (
-        o.name ILIKE $1 OR
-        o.description ILIKE $1 OR
-        c.company_name ILIKE $1
+        o.name ILIKE $${paramIndex} OR
+        o.description ILIKE $${paramIndex} OR
+        c.company_name ILIKE $${paramIndex}
       )`;
       queryParams.push(`%${search}%`);
     }
@@ -41,11 +49,17 @@ router.get('/', authenticateToken, async (req, res) => {
       WHERE 1=1
     `;
 
+    // Filter out archived opportunities by default
+    if (include_archived !== 'true') {
+      countQuery += ` AND (o.is_deleted = FALSE OR o.is_deleted IS NULL)`;
+    }
+
     if (search) {
+      const paramIndex = queryParams.length > 0 ? 1 : 1;
       countQuery += ` AND (
-        o.name ILIKE $1 OR
-        o.description ILIKE $1 OR
-        c.company_name ILIKE $1
+        o.name ILIKE $${paramIndex} OR
+        o.description ILIKE $${paramIndex} OR
+        c.company_name ILIKE $${paramIndex}
       )`;
     }
 
@@ -58,8 +72,15 @@ router.get('/', authenticateToken, async (req, res) => {
 
     const result = await pool.query(query, queryParams);
 
+    // Transform stage and priority to lowercase for frontend
+    const transformedOpportunities = result.rows.map(opp => ({
+      ...opp,
+      stage: opp.stage ? opp.stage.toLowerCase() : opp.stage,
+      priority: opp.priority ? opp.priority.toLowerCase() : opp.priority
+    }));
+
     res.json({
-      opportunities: result.rows,
+      opportunities: transformedOpportunities,
       total: totalCount,
       limit: parseInt(limit),
       offset: parseInt(offset)
@@ -93,7 +114,14 @@ router.get('/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Opportunity not found' });
     }
 
-    res.json(result.rows[0]);
+    // Transform stage and priority to lowercase for frontend
+    const opportunity = {
+      ...result.rows[0],
+      stage: result.rows[0].stage ? result.rows[0].stage.toLowerCase() : result.rows[0].stage,
+      priority: result.rows[0].priority ? result.rows[0].priority.toLowerCase() : result.rows[0].priority
+    };
+
+    res.json(opportunity);
   } catch (error) {
     console.error('Error fetching opportunity:', error);
     res.status(500).json({ error: 'Failed to fetch opportunity', message: error.message });
@@ -108,14 +136,14 @@ router.post('/', authenticateToken, async (req, res) => {
       name,
       description,
       value,
+      amount,
       currency_id,
       stage,
       probability,
       expected_close_date,
       owner_user_id,
       source,
-      priority,
-      notes
+      priority
     } = req.body;
 
     // Validate required fields
@@ -125,11 +153,11 @@ router.post('/', authenticateToken, async (req, res) => {
 
     const query = `
       INSERT INTO opportunity (
-        customer_id, name, description, value, currency_id,
+        customer_id, name, description, amount, currency_id,
         stage, probability, expected_close_date, owner_user_id,
-        source, priority, notes, created_at, updated_at
+        priority, created_at, updated_at, created_by, updated_by
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW())
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW(), $11, $12)
       RETURNING *
     `;
 
@@ -137,23 +165,41 @@ router.post('/', authenticateToken, async (req, res) => {
       customer_id,
       name,
       description,
-      value,
+      value || amount, // Accept both value and amount for backwards compatibility
       currency_id,
-      stage || 'prospecting',
+      (stage ? stage.toUpperCase() : 'PROSPECT'),  // Convert to uppercase for database
       probability || 0,
       expected_close_date,
       owner_user_id || req.user.user_id, // Use current user if not specified
-      source,
-      priority || 'medium',
-      notes
+      (priority ? priority.toUpperCase() : 'MEDIUM'),  // Convert to uppercase for database
+      req.user.user_id, // created_by
+      req.user.user_id  // updated_by
     ];
 
     const result = await pool.query(query, values);
 
-    res.status(201).json(result.rows[0]);
+    // Transform stage and priority to lowercase for frontend
+    const opportunity = {
+      ...result.rows[0],
+      stage: result.rows[0].stage ? result.rows[0].stage.toLowerCase() : result.rows[0].stage,
+      priority: result.rows[0].priority ? result.rows[0].priority.toLowerCase() : result.rows[0].priority
+    };
+
+    res.status(201).json(opportunity);
   } catch (error) {
     console.error('Error creating opportunity:', error);
-    res.status(500).json({ error: 'Failed to create opportunity', message: error.message });
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      detail: error.detail,
+      table: error.table,
+      constraint: error.constraint
+    });
+    res.status(500).json({
+      error: 'Failed to create opportunity',
+      message: error.message,
+      detail: error.detail || error.message
+    });
   }
 });
 
@@ -165,6 +211,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
       name,
       description,
       value,
+      amount,
       currency_id,
       stage,
       probability,
@@ -172,31 +219,43 @@ router.put('/:id', authenticateToken, async (req, res) => {
       owner_user_id,
       source,
       priority,
-      notes
+      region_id,
+      country_code
     } = req.body;
 
     const query = `
       UPDATE opportunity SET
         name = COALESCE($1, name),
         description = COALESCE($2, description),
-        value = COALESCE($3, value),
+        amount = COALESCE($3, amount),
         currency_id = COALESCE($4, currency_id),
         stage = COALESCE($5, stage),
         probability = COALESCE($6, probability),
         expected_close_date = COALESCE($7, expected_close_date),
         owner_user_id = COALESCE($8, owner_user_id),
-        source = COALESCE($9, source),
-        priority = COALESCE($10, priority),
-        notes = COALESCE($11, notes),
-        updated_at = NOW()
-      WHERE opportunity_id = $12
+        priority = COALESCE($9, priority),
+        region_id = COALESCE($10, region_id),
+        country_code = COALESCE($11, country_code),
+        updated_at = NOW(),
+        updated_by = $12
+      WHERE opportunity_id = $13
       RETURNING *
     `;
 
     const values = [
-      name, description, value, currency_id, stage,
-      probability, expected_close_date, owner_user_id,
-      source, priority, notes, id
+      name,
+      description,
+      value || amount,
+      currency_id,
+      stage ? stage.toUpperCase() : stage,  // Convert to uppercase for database
+      probability,
+      expected_close_date,
+      owner_user_id,
+      priority ? priority.toUpperCase() : priority,  // Convert to uppercase for database
+      region_id,
+      country_code,
+      req.user.user_id,
+      id
     ];
 
     const result = await pool.query(query, values);
@@ -205,10 +264,28 @@ router.put('/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Opportunity not found' });
     }
 
-    res.json(result.rows[0]);
+    // Transform stage and priority to lowercase for frontend
+    const opportunity = {
+      ...result.rows[0],
+      stage: result.rows[0].stage ? result.rows[0].stage.toLowerCase() : result.rows[0].stage,
+      priority: result.rows[0].priority ? result.rows[0].priority.toLowerCase() : result.rows[0].priority
+    };
+
+    res.json(opportunity);
   } catch (error) {
     console.error('Error updating opportunity:', error);
-    res.status(500).json({ error: 'Failed to update opportunity', message: error.message });
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      detail: error.detail,
+      table: error.table,
+      constraint: error.constraint
+    });
+    res.status(500).json({
+      error: 'Failed to update opportunity',
+      message: error.message,
+      detail: error.detail || error.message
+    });
   }
 });
 
@@ -219,7 +296,69 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 
     const query = `
       UPDATE opportunity
-      SET is_deleted = true, updated_at = NOW()
+      SET
+        is_deleted = TRUE,
+        archived_at = NOW(),
+        archived_by = $2,
+        updated_at = NOW()
+      WHERE opportunity_id = $1
+      RETURNING *
+    `;
+
+    const result = await pool.query(query, [id, req.user.user_id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Opportunity not found' });
+    }
+
+    res.json({ message: 'Opportunity deleted successfully', opportunity: result.rows[0] });
+  } catch (error) {
+    console.error('Error deleting opportunity:', error);
+    res.status(500).json({ error: 'Failed to delete opportunity', message: error.message });
+  }
+});
+
+// PATCH archive opportunity
+router.patch('/:id/archive', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const query = `
+      UPDATE opportunity
+      SET
+        is_deleted = TRUE,
+        archived_at = NOW(),
+        archived_by = $2,
+        updated_at = NOW()
+      WHERE opportunity_id = $1
+      RETURNING *
+    `;
+
+    const result = await pool.query(query, [id, req.user.user_id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Opportunity not found' });
+    }
+
+    res.json({ message: 'Opportunity archived successfully', opportunity: result.rows[0] });
+  } catch (error) {
+    console.error('Error archiving opportunity:', error);
+    res.status(500).json({ error: 'Failed to archive opportunity', message: error.message });
+  }
+});
+
+// PATCH restore opportunity from archive
+router.patch('/:id/restore', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const query = `
+      UPDATE opportunity
+      SET
+        is_deleted = FALSE,
+        archived_at = NULL,
+        archived_by = NULL,
+        updated_at = NOW()
       WHERE opportunity_id = $1
       RETURNING *
     `;
@@ -230,10 +369,10 @@ router.delete('/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Opportunity not found' });
     }
 
-    res.json({ message: 'Opportunity deleted successfully', opportunity: result.rows[0] });
+    res.json({ message: 'Opportunity restored successfully', opportunity: result.rows[0] });
   } catch (error) {
-    console.error('Error deleting opportunity:', error);
-    res.status(500).json({ error: 'Failed to delete opportunity', message: error.message });
+    console.error('Error restoring opportunity:', error);
+    res.status(500).json({ error: 'Failed to restore opportunity', message: error.message });
   }
 });
 

@@ -8,10 +8,15 @@ import { Opportunities } from './components/pages/Opportunities';
 import { Interactions } from './components/pages/Interactions';
 import { InteractionDetail } from './components/pages/InteractionDetail';
 import { TaskManager } from './components/pages/TaskManager';
+import { TaskDetail } from './components/pages/TaskDetail';
 import { Calendar } from './components/pages/Calendar';
 import { Contacts } from './components/pages/Contacts';
 import { Settings } from './components/pages/Settings';
 import { CreateOpportunity } from './components/pages/CreateOpportunity';
+import { OpportunityDetail } from './components/pages/OpportunityDetail';
+import { ArchivedOpportunities } from './components/pages/ArchivedOpportunities';
+import { ArchivedInteractions } from './components/pages/ArchivedInteractions';
+import { ArchivedTasks } from './components/pages/ArchivedTasks';
 import { CreateInteraction } from './components/pages/CreateInteraction';
 import { CreateTask } from './components/pages/CreateTask';
 import { CreateContact } from './components/pages/CreateContact';
@@ -28,18 +33,23 @@ import { authApi, clearTokens, getAccessToken } from './services/api';
 
 export type Language = 'zh' | 'en';
 
-export type PageType = 
-  | 'dashboard' 
-  | 'market-insights' 
-  | 'customer-insights' 
-  | 'opportunities' 
+export type PageType =
+  | 'dashboard'
+  | 'market-insights'
+  | 'customer-insights'
+  | 'opportunities'
+  | 'archived-opportunities'
   | 'create-opportunity'
-  | 'interactions' 
+  | 'opportunity-detail'
+  | 'interactions'
+  | 'archived-interactions'
   | 'create-interaction'
   | 'interaction-detail'
   | 'task-manager'
+  | 'archived-tasks'
+  | 'task-detail'
   | 'create-task'
-  | 'calendar' 
+  | 'calendar'
   | 'create-event'
   | 'contacts'
   | 'create-contact'
@@ -62,6 +72,8 @@ export default function App() {
   const [customerInsightsTab, setCustomerInsightsTab] = useState<CustomerInsightsTab>('documents');
   const [selectedInteractionId, setSelectedInteractionId] = useState<string | undefined>();
   const [selectedContactId, setSelectedContactId] = useState<number | undefined>();
+  const [selectedOpportunityId, setSelectedOpportunityId] = useState<string | undefined>();
+  const [selectedTaskId, setSelectedTaskId] = useState<number | undefined>();
   const [isNewContactModalOpen, setIsNewContactModalOpen] = useState(false);
 
   // Check authentication status on app load
@@ -145,19 +157,50 @@ export default function App() {
           language={language} 
           currentTab={customerInsightsTab}
           onTabChange={setCustomerInsightsTab}
+          onNavigateToDetail={(id) => {
+            setSelectedInteractionId(id);
+            setCurrentPage('interaction-detail');
+          }}
         />;
       case 'opportunities':
-        return <Opportunities searchQuery={searchQuery} language={language} />;
+        return <Opportunities
+          searchQuery={searchQuery}
+          language={language}
+          onViewOpportunity={(id) => {
+            setSelectedOpportunityId(id);
+            setCurrentPage('opportunity-detail');
+          }}
+        />;
       case 'create-opportunity':
         return <CreateOpportunity language={language} onNavigateBack={setCurrentPage} />;
+      case 'opportunity-detail':
+        return selectedOpportunityId ? (
+          <OpportunityDetail
+            language={language}
+            opportunityId={selectedOpportunityId}
+            onNavigateBack={setCurrentPage}
+          />
+        ) : null;
+      case 'archived-opportunities':
+        return <ArchivedOpportunities
+          searchQuery={searchQuery}
+          language={language}
+          onNavigateBack={() => setCurrentPage('opportunities')}
+        />;
       case 'interactions':
-        return <Interactions 
-          searchQuery={searchQuery} 
-          language={language} 
+        return <Interactions
+          searchQuery={searchQuery}
+          language={language}
           onViewDetails={(id) => {
             setSelectedInteractionId(id);
             setCurrentPage('interaction-detail');
           }}
+        />;
+      case 'archived-interactions':
+        return <ArchivedInteractions
+          searchQuery={searchQuery}
+          language={language}
+          onNavigateBack={() => setCurrentPage('interactions')}
         />;
       case 'create-interaction':
         return <CreateInteraction language={language} onNavigateBack={setCurrentPage} />;
@@ -169,7 +212,29 @@ export default function App() {
           interactionId={selectedInteractionId}
         />;
       case 'task-manager':
-        return <TaskManager searchQuery={searchQuery} language={language} />;
+        return <TaskManager
+          searchQuery={searchQuery}
+          language={language}
+          onNavigate={setCurrentPage}
+          onViewTask={(id) => {
+            setSelectedTaskId(id);
+            setCurrentPage('task-detail');
+          }}
+        />;
+      case 'archived-tasks':
+        return <ArchivedTasks
+          searchQuery={searchQuery}
+          language={language}
+          onNavigateBack={() => setCurrentPage('task-manager')}
+        />;
+      case 'task-detail':
+        return selectedTaskId ? (
+          <TaskDetail
+            language={language}
+            taskId={selectedTaskId}
+            onNavigateBack={setCurrentPage}
+          />
+        ) : null;
       case 'create-task':
         return <CreateTask language={language} onNavigateBack={setCurrentPage} />;
       case 'calendar':
@@ -275,7 +340,7 @@ export default function App() {
         onSignOut={handleSignOut}
       />
       <div className="flex-1 flex flex-col">
-        <Navbar 
+        <Navbar
           currentPage={currentPage}
           language={language}
           onLanguageChange={setLanguage}
@@ -289,6 +354,9 @@ export default function App() {
           onNewTask={() => setCurrentPage('create-task')}
           onNewEvent={() => setCurrentPage('create-event')}
           onNewContact={() => setCurrentPage('create-contact')}
+          onViewArchivedOpportunities={() => setCurrentPage('archived-opportunities')}
+          onViewArchivedInteractions={() => setCurrentPage('archived-interactions')}
+          onViewArchivedTasks={() => setCurrentPage('archived-tasks')}
         />
         <main className="flex-1 overflow-auto px-6 pb-6">
           {renderCurrentPage()}

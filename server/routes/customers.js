@@ -106,14 +106,37 @@ router.get('/:id', authenticateToken, async (req, res) => {
   }
 });
 
+function inferRegionFromCountry(country) {
+  if (!country) return null;
+
+  const normalized = country.trim().toLowerCase();
+
+  if (['china', 'cn', 'japan', 'jp', 'south korea', 'kr', 'singapore', 'sg', 'hong kong', 'hk', 'india', 'in', 'australia', 'au'].includes(normalized)) {
+    return 'APAC';
+  }
+
+  if (['united states', 'us', 'usa', 'canada', 'ca'].includes(normalized)) {
+    return 'NA';
+  }
+
+  if (['united kingdom', 'uk', 'gb', 'great britain', 'germany', 'de', 'france', 'fr', 'europe', 'eu'].includes(normalized)) {
+    return 'EMEA';
+  }
+
+  return 'GLOBAL';
+}
+
 // POST create new customer
 router.post('/', authenticateToken, async (req, res) => {
   try {
     const {
       company_name,
       industry_code,
+      industry_name,
+      listing_status,
       website,
       description,
+      introduction,
       phone,
       email,
       address_line1,
@@ -125,25 +148,124 @@ router.post('/', authenticateToken, async (req, res) => {
       region,
       customer_type,
       status,
-      owner_user_id
+      owner_user_id,
+      employee_count_range,
+      custom_fields,
+      customFields
     } = req.body;
+
+    if (!company_name || !company_name.trim()) {
+      return res.status(400).json({ error: 'Company name is required' });
+    }
+
+    const resolvedOwnerUserId = owner_user_id || req.user?.user_id || null;
+    const resolvedRegion = region || inferRegionFromCountry(country);
+    const customerStatus = status || 'active';
+    const customerType = customer_type || 'prospect';
+
+    let customFieldsPayload = null;
+    const rawCustomFields = custom_fields ?? customFields;
+    if (rawCustomFields !== undefined) {
+      if (typeof rawCustomFields === 'string') {
+        try {
+          customFieldsPayload = JSON.parse(rawCustomFields);
+        } catch (parseError) {
+          console.warn('[Customer Create] Failed to parse custom fields string, storing raw string');
+          customFieldsPayload = { raw: rawCustomFields };
+        }
+      } else {
+        customFieldsPayload = rawCustomFields;
+      }
+    }
+
+    // Handle industry: create if custom industry name is provided
+    let resolvedIndustryCode = industry_code;
+    if (industry_name && !industry_code) {
+      // Check if industry exists
+      const industryCheck = await pool.query(
+        'SELECT industry_code FROM industry WHERE LOWER(industry_name) = LOWER($1)',
+        [industry_name]
+      );
+
+      if (industryCheck.rows.length > 0) {
+        resolvedIndustryCode = industryCheck.rows[0].industry_code;
+      } else {
+        // Create new industry
+        const newIndustryCode = industry_name.toUpperCase().replace(/[^A-Z0-9]/g, '_').substring(0, 20);
+        try {
+          const industryInsert = await pool.query(
+            'INSERT INTO industry (industry_code, industry_name) VALUES ($1, $2) RETURNING industry_code',
+            [newIndustryCode, industry_name]
+          );
+          resolvedIndustryCode = industryInsert.rows[0].industry_code;
+        } catch (err) {
+          // If insert fails due to duplicate key, try to fetch again
+          if (err.code === '23505') {
+            const retryCheck = await pool.query(
+              'SELECT industry_code FROM industry WHERE industry_name = $1',
+              [industry_name]
+            );
+            resolvedIndustryCode = retryCheck.rows[0]?.industry_code || null;
+          } else {
+            throw err;
+          }
+        }
+      }
+    }
 
     const query = `
       INSERT INTO customer (
-        company_name, industry_code, website, description,
-        phone, email, address_line1, address_line2, city,
-        state_province, postal_code, country, region,
-        customer_type, status, owner_user_id
+        company_name,
+        industry_code,
+        listing_status,
+        website,
+        description,
+        introduction,
+        phone,
+        email,
+        address_line1,
+        address_line2,
+        city,
+        state_province,
+        postal_code,
+        country,
+        region,
+        customer_type,
+        status,
+        owner_user_id,
+        employee_count_range,
+        custom_fields
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+      VALUES (
+        $1, $2, $3, $4, $5,
+        $6, $7, $8, $9, $10,
+        $11, $12, $13, $14, $15,
+        $16, $17, $18, $19, $20
+      )
       RETURNING *
     `;
 
     const values = [
-      company_name, industry_code, website, description,
-      phone, email, address_line1, address_line2, city,
-      state_province, postal_code, country, region,
-      customer_type, status || 'active', owner_user_id
+      company_name.trim(),
+      resolvedIndustryCode || null,
+      listing_status || null,
+      website || null,
+      description || null,
+      introduction || null,
+      phone || null,
+      email || null,
+      address_line1 || null,
+      address_line2 || null,
+      city || null,
+      state_province || null,
+      postal_code || null,
+      country || null,
+      resolvedRegion || null,
+      customerType,
+      customerStatus,
+      resolvedOwnerUserId,
+      employee_count_range || null,
+      customFieldsPayload
     ];
 
     const result = await pool.query(query, values);
@@ -186,7 +308,14 @@ router.put('/:id', authenticateToken, async (req, res) => {
       description,
       phone,
       email,
-      status
+      customer_type,
+      status,
+      address_line1,
+      address_line2,
+      city,
+      state_province,
+      postal_code,
+      country
     } = req.body;
 
     const query = `
@@ -197,15 +326,24 @@ router.put('/:id', authenticateToken, async (req, res) => {
         description = COALESCE($4, description),
         phone = COALESCE($5, phone),
         email = COALESCE($6, email),
-        status = COALESCE($7, status),
-        updated_at = NOW()
-      WHERE customer_id = $8
+        customer_type = COALESCE($7, customer_type),
+        status = COALESCE($8, status),
+        address_line1 = COALESCE($9, address_line1),
+        address_line2 = COALESCE($10, address_line2),
+        city = COALESCE($11, city),
+        state_province = COALESCE($12, state_province),
+        postal_code = COALESCE($13, postal_code),
+        country = COALESCE($14, country),
+        updated_at = NOW(),
+        updated_by = $16
+      WHERE customer_id = $15
       RETURNING *
     `;
 
     const values = [
       company_name, industry_code, website, description,
-      phone, email, status, id
+      phone, email, customer_type, status, address_line1, address_line2,
+      city, state_province, postal_code, country, id, req.user?.user_id || null
     ];
 
     const result = await pool.query(query, values);

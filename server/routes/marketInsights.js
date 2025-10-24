@@ -95,6 +95,7 @@ router.get('/articles', authenticateToken, async (req, res) => {
       importance,
       company,
       search,
+      tag_code, // NEW: Support for bucket tag filtering
       limit = 20,
       offset = 0
     } = req.query;
@@ -166,6 +167,23 @@ router.get('/articles', authenticateToken, async (req, res) => {
       query += ` AND c.name ILIKE $${paramCount}`;
       queryParams.push(`%${company}%`);
       paramCount++;
+    }
+
+    // Filter by tag code using proper bucket_tag relationship
+    if (tag_code && tag_code !== 'all' && bucket) {
+      query += `
+        AND EXISTS (
+          SELECT 1
+          FROM article_tag at
+          JOIN bucket_tag bt ON at.tag_id = bt.tag_id
+          JOIN bucket b2 ON bt.bucket_id = b2.bucket_id
+          WHERE at.news_id = na.news_id
+          AND bt.tag_code = $${paramCount}
+          AND b2.name = $${paramCount + 1}
+          AND bt.is_active = true
+        )`;
+      queryParams.push(tag_code, bucket);
+      paramCount += 2;
     }
 
     // Search in title, English summary, and Chinese summary for better coverage
@@ -437,6 +455,143 @@ router.get('/tags', authenticateToken, async (req, res) => {
   }
 });
 
+// GET /api/market-insights/bucket-tags/:bucketName - Get tags for a specific bucket
+router.get('/bucket-tags/:bucketName', authenticateToken, async (req, res) => {
+  try {
+    const { bucketName } = req.params;
+    const { limit = 20 } = req.query;
+
+    const query = `
+      SELECT
+        bt.tag_code,
+        t.name as tag_name,
+        t.tag_id,
+        bt.sort_order,
+        bt.is_active,
+        COUNT(at.news_id) as frequency
+      FROM bucket_tag bt
+      JOIN tag t ON bt.tag_id = t.tag_id
+      JOIN bucket b ON bt.bucket_id = b.bucket_id
+      LEFT JOIN article_tag at ON t.tag_id = at.tag_id
+      LEFT JOIN news_article na ON at.news_id = na.news_id AND na.has_text = true
+      WHERE b.name = $1 AND bt.is_active = true
+      GROUP BY bt.tag_code, t.name, t.tag_id, bt.sort_order, bt.is_active
+      ORDER BY bt.sort_order NULLS LAST, frequency DESC, t.name
+      LIMIT $2
+    `;
+
+    const result = await miaPool.query(query, [bucketName, limit]);
+
+    // Chinese translations mapping for common tag names
+    const getChineseTagName = (englishName) => {
+      const tagTranslations = {
+        // Interest Rates & Monetary Policy
+        'Interest Rates': '利率',
+        'Monetary Policy': '货币政策',
+        'Inflation': '通胀',
+        'Federal Reserve': '美联储',
+        'ECB': '欧洲央行',
+        'Central Banks': '央行',
+        'Quantitative Easing': '量化宽松',
+
+        // Banking & Regulation
+        'Basel III': '巴塞尔协议III',
+        'Compliance': '合规',
+        'Stress Test': '压力测试',
+        'Capital Requirements': '资本要求',
+        'Risk Management': '风险管理',
+        'Banking Regulation': '银行监管',
+
+        // Markets
+        'Stock Market': '股市',
+        'Bond Market': '债券市场',
+        'Volatility': '波动性',
+        'Trading': '交易',
+        'Market Outlook': '市场前景',
+        'Equity Markets': '股票市场',
+        'Fixed Income': '固定收益',
+
+        // Fintech & Payments
+        'Digital Payments': '数字支付',
+        'Blockchain': '区块链',
+        'Cryptocurrency': '加密货币',
+        'Mobile Banking': '移动银行',
+        'Fintech Innovation': '金融科技创新',
+        'Payment Systems': '支付系统',
+
+        // Tech & AI
+        'Artificial Intelligence': '人工智能',
+        'Data Privacy': '数据隐私',
+        'Tech Regulation': '科技监管',
+        'Machine Learning': '机器学习',
+        'GDPR': 'GDPR',
+        'Cybersecurity': '网络安全',
+        'AI Policy': 'AI政策',
+
+        // ESG & Sustainability
+        'ESG': 'ESG',
+        'Sustainability': '可持续发展',
+        'Climate Change': '气候变化',
+        'Green Finance': '绿色金融',
+        'Carbon Emissions': '碳排放',
+
+        // Geopolitics & Trade
+        'Trade': '贸易',
+        'Tariffs': '关税',
+        'Sanctions': '制裁',
+        'Geopolitics': '地缘政治',
+        'Trade War': '贸易战',
+        'International Relations': '国际关系',
+
+        // Economy
+        'GDP': 'GDP',
+        'Employment': '就业',
+        'Economic Growth': '经济增长',
+        'Recession': '经济衰退',
+        'Economic Indicators': '经济指标'
+      };
+
+      return tagTranslations[englishName] || englishName;
+    };
+
+    const bucketTags = result.rows.map(row => ({
+      id: row.tag_code,
+      tag_id: row.tag_id,
+      code: row.tag_code,
+      name: row.tag_name,
+      label_en: row.tag_name,
+      label_zh: getChineseTagName(row.tag_name),
+      frequency: parseInt(row.frequency) || 0,
+      sort_order: row.sort_order,
+      is_active: row.is_active
+    }));
+
+    // Add "All Tags" option at the beginning
+    bucketTags.unshift({
+      id: 'all',
+      tag_id: null,
+      code: 'all',
+      name: 'All Tags',
+      label_en: 'All Tags',
+      label_zh: '全部标签',
+      frequency: 0,
+      sort_order: 0,
+      is_active: true
+    });
+
+    console.log(`[Bucket Tags] Found ${bucketTags.length - 1} tags for bucket: ${bucketName}`);
+
+    res.json({
+      bucket_name: bucketName,
+      tags: bucketTags,
+      total: bucketTags.length - 1 // Exclude "All Tags" from count
+    });
+  } catch (error) {
+    console.error('Error fetching bucket tags:', error);
+    res.status(500).json({ error: 'Failed to fetch bucket tags', message: error.message });
+  }
+});
+
 // GET /api/market-insights/regions - Get available regions with article counts
 router.get('/regions', authenticateToken, async (req, res) => {
   try {
@@ -564,6 +719,153 @@ router.get('/countries', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Error fetching countries:', error);
     res.status(500).json({ error: 'Failed to fetch countries', message: error.message });
+  }
+});
+
+// GET /api/market-insights/customer/:customerName - Get news for a specific customer/company
+router.get('/customer/:customerName', authenticateToken, async (req, res) => {
+  try {
+    const { customerName } = req.params;
+    const { limit = 20, offset = 0 } = req.query;
+
+    const query = `
+      SELECT
+        na.news_id,
+        na.title,
+        na.url,
+        na.published_at,
+        na.source,
+        na.summary_en,
+        na.summary_zh,
+        na.importance,
+        na.imp_reason,
+        na.top_bucket,
+        na.primary_region,
+        na.regions,
+        na.countries,
+        b.name as bucket_name,
+        c.name as company_name,
+        c.ticker as company_ticker,
+        ARRAY_AGG(DISTINCT t.name) FILTER (WHERE t.name IS NOT NULL) as tags
+      FROM news_article na
+      LEFT JOIN bucket b ON na.bucket_id = b.bucket_id
+      LEFT JOIN company c ON na.company_id = c.company_id
+      LEFT JOIN article_tag at ON na.news_id = at.news_id
+      LEFT JOIN tag t ON at.tag_id = t.tag_id
+      WHERE na.has_text = true
+      AND c.name ILIKE $1
+      GROUP BY na.news_id, b.name, c.name, c.ticker
+      ORDER BY na.published_at DESC
+      LIMIT $2 OFFSET $3
+    `;
+
+    const result = await miaPool.query(query, [`%${customerName}%`, limit, offset]);
+
+    // Get total count
+    const countQuery = `
+      SELECT COUNT(DISTINCT na.news_id)
+      FROM news_article na
+      LEFT JOIN company c ON na.company_id = c.company_id
+      WHERE na.has_text = true
+      AND c.name ILIKE $1
+    `;
+    const countResult = await miaPool.query(countQuery, [`%${customerName}%`]);
+    const totalCount = parseInt(countResult.rows[0].count);
+
+    // Transform data
+    const articles = result.rows.map(article => ({
+      id: article.news_id,
+      title_en: article.title,
+      title_zh: '',
+      content_en: article.summary_en || '',
+      content_zh: article.summary_zh || '',
+      ai_summary_en: article.summary_en || '',
+      ai_summary_zh: article.summary_zh || '',
+      source_en: article.source || 'Unknown',
+      source_zh: getChineseSourceName(article.source) || article.source || '未知',
+      publishTime: new Date(article.published_at).toLocaleString('sv-SE').replace('T', ' ').substring(0, 19),
+      url: article.url,
+      category: bucketToCategory[article.top_bucket] || 'industry',
+      importance: article.importance || 3,
+      imp_reason: article.imp_reason,
+      bucket: article.top_bucket,
+      bucket_name: article.bucket_name,
+      region: mapDbRegionToFrontend(article.primary_region),
+      regions: article.regions,
+      countries: article.countries,
+      company_name: article.company_name,
+      company_ticker: article.company_ticker,
+      tags: article.tags || []
+    }));
+
+    res.json({
+      articles,
+      total: totalCount,
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      customer_name: customerName
+    });
+  } catch (error) {
+    console.error('Error fetching customer news:', error);
+    res.status(500).json({ error: 'Failed to fetch customer news', message: error.message });
+  }
+});
+
+// PATCH /api/market-insights/article/:id/translation
+// Update translation fields for a news article
+router.patch('/article/:id/translation', async (req, res) => {
+  const { id } = req.params;
+  const { title_zh, summary_zh } = req.body;
+
+  try {
+    // Build dynamic UPDATE query based on provided fields
+    const updates = [];
+    const values = [];
+    let paramCount = 1;
+
+    if (title_zh !== undefined) {
+      updates.push(`title_zh = $${paramCount++}`);
+      values.push(title_zh);
+    }
+
+    if (summary_zh !== undefined) {
+      updates.push(`summary_zh = $${paramCount++}`);
+      values.push(summary_zh);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'No translation fields provided' });
+    }
+
+    // Add news_id to values array
+    values.push(id);
+
+    const query = `
+      UPDATE news_article
+      SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP
+      WHERE news_id = $${paramCount}
+      RETURNING news_id, title, title_zh, summary_zh, updated_at
+    `;
+
+    console.log(`[Market Insights] Updating translations for article ${id}`);
+    console.log(`[Market Insights] Query: ${query}`);
+    console.log(`[Market Insights] Values:`, values);
+
+    const result = await miaPool.query(query, values);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Article not found' });
+    }
+
+    console.log(`[Market Insights] Successfully updated translations for article ${id}`);
+
+    res.json({
+      success: true,
+      article: result.rows[0]
+    });
+  } catch (error) {
+    console.error('[Market Insights] Error updating article translation:', error);
+    res.status(500).json({ error: 'Failed to update translation', message: error.message });
   }
 });
 

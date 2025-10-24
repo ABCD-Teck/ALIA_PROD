@@ -7,10 +7,11 @@ import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Calendar } from '../ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { CalendarIcon, Save } from 'lucide-react';
+import { CalendarIcon, Save, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { zhCN, enUS } from 'date-fns/locale';
 import { Language, PageType } from '../../App';
+import { tasksApi } from '../../services/api';
 
 interface CreateTaskProps {
   language: Language;
@@ -21,7 +22,7 @@ export function CreateTask({ language, onNavigateBack }: CreateTaskProps) {
   const [formData, setFormData] = useState({
     subject: '',
     priority: '',
-    status: 'Incomplete',
+    status: 'NEW',
     contactName: '',
     dueDate: undefined as Date | undefined,
     description: '',
@@ -30,6 +31,9 @@ export function CreateTask({ language, onNavigateBack }: CreateTaskProps) {
     estimatedHours: '',
     tags: ''
   });
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const content = {
     zh: {
@@ -54,17 +58,21 @@ export function CreateTask({ language, onNavigateBack }: CreateTaskProps) {
       tagsPlaceholder: '输入标签，用逗号分隔',
       cancel: '取消',
       save: '保存',
-      
+      saving: '保存中...',
+      success: '任务创建成功！',
+      errorTitle: '错误',
+      requiredFields: '请填写所有必填字段',
+
       priorities: {
-        high: '高',
-        medium: '中',
-        low: '低'
+        HIGH: '高',
+        MEDIUM: '中',
+        LOW: '低'
       },
       statuses: {
-        incomplete: '未完成',
-        inProgress: '进行中',
-        complete: '已完成',
-        onHold: '暂停'
+        NEW: '新建',
+        IN_PROGRESS: '进行中',
+        COMPLETED: '已完成',
+        CANCELLED: '已取消'
       },
       categories: {
         sales: '销售',
@@ -97,17 +105,21 @@ export function CreateTask({ language, onNavigateBack }: CreateTaskProps) {
       tagsPlaceholder: 'Enter tags, separated by commas',
       cancel: 'Cancel',
       save: 'Save',
-      
+      saving: 'Saving...',
+      success: 'Task created successfully!',
+      errorTitle: 'Error',
+      requiredFields: 'Please fill in all required fields',
+
       priorities: {
-        high: 'High',
-        medium: 'Medium',
-        low: 'Low'
+        HIGH: 'High',
+        MEDIUM: 'Medium',
+        LOW: 'Low'
       },
       statuses: {
-        incomplete: 'Incomplete',
-        inProgress: 'In Progress',
-        complete: 'Complete',
-        onHold: 'On Hold'
+        NEW: 'New',
+        IN_PROGRESS: 'In Progress',
+        COMPLETED: 'Completed',
+        CANCELLED: 'Cancelled'
       },
       categories: {
         sales: 'Sales',
@@ -122,11 +134,46 @@ export function CreateTask({ language, onNavigateBack }: CreateTaskProps) {
 
   const t = content[language];
 
-  const handleSave = () => {
-    // TODO: 在这里处理保存逻辑
-    console.log('Saving task:', formData);
-    // 保存成功后返回任务管理页面
-    onNavigateBack('task-manager');
+  const handleSave = async () => {
+    // Validate required fields
+    if (!formData.subject || !formData.priority || !formData.dueDate) {
+      setError(t.requiredFields);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Format the data for the API
+      const taskData = {
+        subject: formData.subject,
+        description: formData.description || undefined,
+        due_date: formData.dueDate ? format(formData.dueDate, 'yyyy-MM-dd') : undefined,
+        priority: formData.priority,
+        status: formData.status,
+        // Note: contact_id and assigned_to would need proper IDs from the database
+        // For now, we're not setting them since we don't have contact/user selection
+      };
+
+      const response = await tasksApi.create(taskData);
+
+      if (response.error) {
+        setError(response.error);
+        return;
+      }
+
+      // Show success (optional - could add a toast notification)
+      console.log('Task created successfully:', response.data);
+
+      // Navigate back to task manager
+      onNavigateBack('task-manager');
+    } catch (err) {
+      console.error('Error creating task:', err);
+      setError(err instanceof Error ? err.message : 'Failed to create task');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCancel = () => {
@@ -142,15 +189,31 @@ export function CreateTask({ language, onNavigateBack }: CreateTaskProps) {
 
   return (
     <div className="space-y-6 mt-6">
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+          <strong>{t.errorTitle}:</strong> {error}
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-end">
         <div className="flex space-x-2">
-          <Button variant="outline" onClick={handleCancel}>
+          <Button variant="outline" onClick={handleCancel} disabled={loading}>
             {t.cancel}
           </Button>
-          <Button variant="teal" onClick={handleSave}>
-            <Save className="h-4 w-4 mr-2" />
-            {t.save}
+          <Button variant="teal" onClick={handleSave} disabled={loading}>
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                {t.saving}
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4 mr-2" />
+                {t.save}
+              </>
+            )}
           </Button>
         </div>
       </div>
@@ -179,9 +242,9 @@ export function CreateTask({ language, onNavigateBack }: CreateTaskProps) {
                   <SelectValue placeholder={t.priority} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="High">{t.priorities.high}</SelectItem>
-                  <SelectItem value="Medium">{t.priorities.medium}</SelectItem>
-                  <SelectItem value="Low">{t.priorities.low}</SelectItem>
+                  <SelectItem value="HIGH">{t.priorities.HIGH}</SelectItem>
+                  <SelectItem value="MEDIUM">{t.priorities.MEDIUM}</SelectItem>
+                  <SelectItem value="LOW">{t.priorities.LOW}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -196,10 +259,10 @@ export function CreateTask({ language, onNavigateBack }: CreateTaskProps) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Incomplete">{t.statuses.incomplete}</SelectItem>
-                  <SelectItem value="In Progress">{t.statuses.inProgress}</SelectItem>
-                  <SelectItem value="Complete">{t.statuses.complete}</SelectItem>
-                  <SelectItem value="On Hold">{t.statuses.onHold}</SelectItem>
+                  <SelectItem value="NEW">{t.statuses.NEW}</SelectItem>
+                  <SelectItem value="IN_PROGRESS">{t.statuses.IN_PROGRESS}</SelectItem>
+                  <SelectItem value="COMPLETED">{t.statuses.COMPLETED}</SelectItem>
+                  <SelectItem value="CANCELLED">{t.statuses.CANCELLED}</SelectItem>
                 </SelectContent>
               </Select>
             </div>

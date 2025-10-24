@@ -202,6 +202,21 @@ taskkill /F /IM node.exe
 # Or use Ctrl+C in the terminal running the server
 ```
 
+### Free Occupied Ports
+```powershell
+# Windows PowerShell: free up ports 3000 + 3001
+Get-NetTCPConnection -LocalPort 3000,3001 -ErrorAction SilentlyContinue |
+  Select-Object -ExpandProperty OwningProcess |
+  Sort-Object -Unique |
+  ForEach-Object { Stop-Process -Id $_ -Force }
+```
+
+```bash
+# macOS / Linux: free up ports 3000 + 3001
+lsof -ti:3000 -sTCP:LISTEN | xargs -r kill -9
+lsof -ti:3001 -sTCP:LISTEN | xargs -r kill -9
+```
+
 ### Check Server Status
 ```bash
 # Test frontend

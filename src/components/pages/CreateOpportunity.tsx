@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, Save, Loader2 } from 'lucide-react';
 import { Language, PageType } from '../../App';
+import { opportunitiesApi, customersApi } from '../../services/api';
 
 interface CreateOpportunityProps {
   language: Language;
@@ -17,35 +18,85 @@ type Priority = 'High' | 'Medium' | 'Low';
 type Status = 'Lead' | 'Proposal' | 'Negotiation' | 'Won' | 'Lost';
 
 interface OpportunityFormData {
-  customer: string;
-  opportunityName: string;
+  customer_id: string;
+  name: string;
   description: string;
   region: string;
   country: string;
   partner: string;
-  priority: Priority;
+  priority: string;
   amount: string;
-  currency: string;
+  currency_id: string;
   salesOwner: string;
-  status: Status;
-  actionPlan: string;
+  stage: string;
+  notes: string;
 }
+
+interface Customer {
+  customer_id: string;
+  company_name: string;
+}
+
+// Currency mapping - these are the actual UUIDs from the database
+const CURRENCY_MAP: Record<string, string> = {
+  'USD': '76d02e9c-f71a-4d8e-9d11-c9e2e7e81ec8',
+  'EUR': '5dd2f770-f1c2-42a0-b3d5-7b2d568fc9d6',
+  'CNY': 'c778b6df-e498-4e44-b727-dbad3e4ee5a3',
+  'GBP': '2899173e-8f1a-41d9-bb93-793118d264e5',
+  'JPY': '4b341475-de3c-4f8b-a8a2-54e119b681a0',
+  'HKD': '26e34e56-c0bb-46a4-9581-e4cd007b613b',
+  'SGD': 'a75f7caa-a0eb-4fc2-abcd-36844a9fbb28'
+};
+
+// Stage mapping from frontend to backend
+const STAGE_MAP: Record<string, string> = {
+  'Lead': 'prospect',
+  'Proposal': 'proposal',
+  'Negotiation': 'negotiation',
+  'Won': 'closed_won',
+  'Lost': 'closed_lost'
+};
 
 export function CreateOpportunity({ language, onNavigateBack }: CreateOpportunityProps) {
   const [formData, setFormData] = useState<OpportunityFormData>({
-    customer: '',
-    opportunityName: '',
+    customer_id: '',
+    name: '',
     description: '',
     region: '',
     country: '',
     partner: '',
-    priority: 'Medium',
+    priority: 'medium',
     amount: '',
-    currency: 'USD',
+    currency_id: CURRENCY_MAP['USD'],
     salesOwner: '',
-    status: 'Lead',
-    actionPlan: ''
+    stage: 'Lead',
+    notes: ''
   });
+
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Fetch customers on mount
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      setIsLoading(true);
+      try {
+        const response = await customersApi.getAll({ limit: 1000 });
+        if (response.data) {
+          setCustomers(response.data.customers);
+        }
+      } catch (err) {
+        console.error('Error fetching customers:', err);
+        setError('Failed to load customers');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchCustomers();
+  }, []);
 
   const content = {
     zh: {
@@ -61,11 +112,12 @@ export function CreateOpportunity({ language, onNavigateBack }: CreateOpportunit
       amount: '金额',
       currency: '币种',
       salesOwner: '销售负责人',
-      status: '状态',
-      actionPlan: '行动计划',
+      status: '阶段',
+      notes: '备注',
       save: '保存',
       cancel: '取消',
-      customerPlaceholder: '请输入客户名称',
+      saving: '保存中...',
+      customerPlaceholder: '请选择客户',
       opportunityNamePlaceholder: '请输入商机名称',
       descriptionPlaceholder: '请输入商机描述',
       regionPlaceholder: '请输入地区',
@@ -73,11 +125,14 @@ export function CreateOpportunity({ language, onNavigateBack }: CreateOpportunit
       partnerPlaceholder: '请输入合作伙伴',
       amountPlaceholder: '请输入金额',
       salesOwnerPlaceholder: '请输入销售负责人',
-      actionPlanPlaceholder: '请输入行动计划',
+      notesPlaceholder: '请输入备注',
+      successMessage: '商机创建成功！',
+      errorMessage: '创建商机失败，请重试',
+      requiredFields: '请填写必填字段',
       priorities: {
-        High: '高',
-        Medium: '中',
-        Low: '低'
+        high: '高',
+        medium: '中',
+        low: '低'
       },
       statuses: {
         Lead: '潜在客户',
@@ -90,7 +145,10 @@ export function CreateOpportunity({ language, onNavigateBack }: CreateOpportunit
         USD: '美元',
         EUR: '欧元',
         CNY: '人民币',
-        GBP: '英镑'
+        GBP: '英镑',
+        JPY: '日元',
+        HKD: '港币',
+        SGD: '新元'
       }
     },
     en: {
@@ -106,11 +164,12 @@ export function CreateOpportunity({ language, onNavigateBack }: CreateOpportunit
       amount: 'Amount',
       currency: 'Currency',
       salesOwner: 'Sales Owner',
-      status: 'Status',
-      actionPlan: 'Action Plan',
+      status: 'Stage',
+      notes: 'Notes',
       save: 'Save',
       cancel: 'Cancel',
-      customerPlaceholder: 'Enter customer name',
+      saving: 'Saving...',
+      customerPlaceholder: 'Select customer',
       opportunityNamePlaceholder: 'Enter opportunity name',
       descriptionPlaceholder: 'Enter opportunity description',
       regionPlaceholder: 'Enter region',
@@ -118,11 +177,14 @@ export function CreateOpportunity({ language, onNavigateBack }: CreateOpportunit
       partnerPlaceholder: 'Enter partner',
       amountPlaceholder: 'Enter amount',
       salesOwnerPlaceholder: 'Enter sales owner',
-      actionPlanPlaceholder: 'Enter action plan',
+      notesPlaceholder: 'Enter notes',
+      successMessage: 'Opportunity created successfully!',
+      errorMessage: 'Failed to create opportunity, please try again',
+      requiredFields: 'Please fill in required fields',
       priorities: {
-        High: 'High',
-        Medium: 'Medium',
-        Low: 'Low'
+        high: 'High',
+        medium: 'Medium',
+        low: 'Low'
       },
       statuses: {
         Lead: 'Lead',
@@ -135,7 +197,10 @@ export function CreateOpportunity({ language, onNavigateBack }: CreateOpportunit
         USD: 'USD',
         EUR: 'EUR',
         CNY: 'CNY',
-        GBP: 'GBP'
+        GBP: 'GBP',
+        JPY: 'JPY',
+        HKD: 'HKD',
+        SGD: 'SGD'
       }
     }
   };
@@ -149,11 +214,53 @@ export function CreateOpportunity({ language, onNavigateBack }: CreateOpportunit
     }));
   };
 
-  const handleSave = () => {
-    // TODO: Implement save logic
-    console.log('Saving opportunity:', formData);
-    // Navigate back to opportunities after saving
-    onNavigateBack('opportunities');
+  const handleSave = async () => {
+    // Validate required fields
+    if (!formData.customer_id || !formData.name) {
+      setError(t.requiredFields);
+      return;
+    }
+
+    setIsSaving(true);
+    setError(null);
+    setSuccessMessage(null);
+
+    try {
+      // Prepare data for API
+      const apiData = {
+        customer_id: formData.customer_id,
+        name: formData.name,
+        description: formData.description || undefined,
+        value: formData.amount ? parseFloat(formData.amount) : undefined,
+        currency_id: formData.currency_id,
+        stage: STAGE_MAP[formData.stage] || 'prospect',
+        probability: undefined, // Can be added later
+        expected_close_date: undefined, // Can be added later
+        source: formData.partner || undefined,
+        priority: formData.priority || 'medium',
+        notes: formData.notes || undefined
+      };
+
+      const response = await opportunitiesApi.create(apiData);
+
+      if (response.data) {
+        setSuccessMessage(t.successMessage);
+        // Wait a moment to show success message, then navigate back
+        setTimeout(() => {
+          onNavigateBack('opportunities');
+        }, 1500);
+      } else {
+        const errorMsg = response.error || t.errorMessage;
+        const detailMsg = (response as any).detail || '';
+        setError(errorMsg + (detailMsg ? '\n' + detailMsg : ''));
+        console.error('Create opportunity error response:', response);
+      }
+    } catch (err) {
+      console.error('Error creating opportunity:', err);
+      setError(t.errorMessage);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleCancel = () => {
@@ -162,15 +269,36 @@ export function CreateOpportunity({ language, onNavigateBack }: CreateOpportunit
 
   return (
     <div className="space-y-6 mt-6">
+      {/* Error/Success Messages */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+          {error}
+        </div>
+      )}
+      {successMessage && (
+        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded">
+          {successMessage}
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-end">
         <div className="flex space-x-2">
-          <Button variant="outline" onClick={handleCancel}>
+          <Button variant="outline" onClick={handleCancel} disabled={isSaving}>
             {t.cancel}
           </Button>
-          <Button variant="teal" onClick={handleSave}>
-            <Save className="h-4 w-4 mr-2" />
-            {t.save}
+          <Button variant="teal" onClick={handleSave} disabled={isSaving || isLoading}>
+            {isSaving ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                {t.saving}
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4 mr-2" />
+                {t.save}
+              </>
+            )}
           </Button>
         </div>
       </div>
@@ -184,20 +312,30 @@ export function CreateOpportunity({ language, onNavigateBack }: CreateOpportunit
           {/* Row 1: Customer and Opportunity Name */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="customer">{t.customer}</Label>
-              <Input
-                id="customer"
-                value={formData.customer}
-                onChange={(e) => handleInputChange('customer', e.target.value)}
-                placeholder={t.customerPlaceholder}
-              />
+              <Label htmlFor="customer">{t.customer} *</Label>
+              <Select
+                value={formData.customer_id}
+                onValueChange={(value) => handleInputChange('customer_id', value)}
+                disabled={isLoading}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={t.customerPlaceholder} />
+                </SelectTrigger>
+                <SelectContent>
+                  {customers.map((customer) => (
+                    <SelectItem key={customer.customer_id} value={customer.customer_id}>
+                      {customer.company_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="opportunityName">{t.opportunityName}</Label>
+              <Label htmlFor="opportunityName">{t.opportunityName} *</Label>
               <Input
                 id="opportunityName"
-                value={formData.opportunityName}
-                onChange={(e) => handleInputChange('opportunityName', e.target.value)}
+                value={formData.name}
+                onChange={(e) => handleInputChange('name', e.target.value)}
                 placeholder={t.opportunityNamePlaceholder}
               />
             </div>
@@ -250,14 +388,14 @@ export function CreateOpportunity({ language, onNavigateBack }: CreateOpportunit
             </div>
             <div className="space-y-2">
               <Label htmlFor="priority">{t.priority}</Label>
-              <Select value={formData.priority} onValueChange={(value: Priority) => handleInputChange('priority', value)}>
+              <Select value={formData.priority} onValueChange={(value) => handleInputChange('priority', value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="High">{t.priorities.High}</SelectItem>
-                  <SelectItem value="Medium">{t.priorities.Medium}</SelectItem>
-                  <SelectItem value="Low">{t.priorities.Low}</SelectItem>
+                  <SelectItem value="high">{t.priorities.high}</SelectItem>
+                  <SelectItem value="medium">{t.priorities.medium}</SelectItem>
+                  <SelectItem value="low">{t.priorities.low}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -277,15 +415,21 @@ export function CreateOpportunity({ language, onNavigateBack }: CreateOpportunit
             </div>
             <div className="space-y-2">
               <Label htmlFor="currency">{t.currency}</Label>
-              <Select value={formData.currency} onValueChange={(value) => handleInputChange('currency', value)}>
+              <Select
+                value={formData.currency_id}
+                onValueChange={(value) => handleInputChange('currency_id', value)}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="USD">{t.currencies.USD}</SelectItem>
-                  <SelectItem value="EUR">{t.currencies.EUR}</SelectItem>
-                  <SelectItem value="CNY">{t.currencies.CNY}</SelectItem>
-                  <SelectItem value="GBP">{t.currencies.GBP}</SelectItem>
+                  <SelectItem value={CURRENCY_MAP['USD']}>{t.currencies.USD}</SelectItem>
+                  <SelectItem value={CURRENCY_MAP['EUR']}>{t.currencies.EUR}</SelectItem>
+                  <SelectItem value={CURRENCY_MAP['CNY']}>{t.currencies.CNY}</SelectItem>
+                  <SelectItem value={CURRENCY_MAP['GBP']}>{t.currencies.GBP}</SelectItem>
+                  <SelectItem value={CURRENCY_MAP['JPY']}>{t.currencies.JPY}</SelectItem>
+                  <SelectItem value={CURRENCY_MAP['HKD']}>{t.currencies.HKD}</SelectItem>
+                  <SelectItem value={CURRENCY_MAP['SGD']}>{t.currencies.SGD}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -304,7 +448,7 @@ export function CreateOpportunity({ language, onNavigateBack }: CreateOpportunit
             </div>
             <div className="space-y-2">
               <Label htmlFor="status">{t.status}</Label>
-              <Select value={formData.status} onValueChange={(value: Status) => handleInputChange('status', value)}>
+              <Select value={formData.stage} onValueChange={(value) => handleInputChange('stage', value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -319,14 +463,14 @@ export function CreateOpportunity({ language, onNavigateBack }: CreateOpportunit
             </div>
           </div>
 
-          {/* Row 7: Action Plan */}
+          {/* Row 7: Notes */}
           <div className="space-y-2">
-            <Label htmlFor="actionPlan">{t.actionPlan}</Label>
+            <Label htmlFor="notes">{t.notes}</Label>
             <Textarea
-              id="actionPlan"
-              value={formData.actionPlan}
-              onChange={(e) => handleInputChange('actionPlan', e.target.value)}
-              placeholder={t.actionPlanPlaceholder}
+              id="notes"
+              value={formData.notes}
+              onChange={(e) => handleInputChange('notes', e.target.value)}
+              placeholder={t.notesPlaceholder}
               rows={4}
             />
           </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -7,11 +7,9 @@ import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Calendar } from '../ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { ArrowLeft, Save, Calendar as CalendarIcon } from 'lucide-react';
+import { ArrowLeft, Save, Calendar as CalendarIcon, Loader2 } from 'lucide-react';
 import { Language, PageType } from '../../App';
-// Note: Using basic date formatting for now
-// import { format } from 'date-fns';
-// import { zhCN, enUS } from 'date-fns/locale';
+import * as api from '../../services/api';
 
 interface CreateInteractionProps {
   language: Language;
@@ -54,6 +52,27 @@ export function CreateInteraction({ language, onNavigateBack }: CreateInteractio
   });
 
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [loadingCustomers, setLoadingCustomers] = useState(true);
+
+  // Fetch customers for dropdown
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      try {
+        const response = await api.customersApi.getAll({ limit: 1000 });
+        if (response.data?.customers) {
+          setCustomers(response.data.customers);
+        }
+      } catch (error) {
+        console.error('Error fetching customers:', error);
+      } finally {
+        setLoadingCustomers(false);
+      }
+    };
+
+    fetchCustomers();
+  }, []);
 
   const content = {
     zh: {
@@ -163,11 +182,86 @@ export function CreateInteraction({ language, onNavigateBack }: CreateInteractio
     }));
   };
 
-  const handleSave = () => {
-    // TODO: Implement save logic
-    console.log('Saving interaction:', formData);
-    // Navigate back to interactions after saving
-    onNavigateBack('interactions');
+  const handleSave = async () => {
+    if (!formData.title || !formData.company || !formData.date) {
+      alert(language === 'zh' ? '请填写必填字段：标题、公司、日期' : 'Please fill required fields: Title, Company, Date');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      // Find customer ID by company name
+      const customer = customers.find(c =>
+        c.company_name.toLowerCase() === formData.company.toLowerCase()
+      );
+
+      if (!customer) {
+        alert(language === 'zh' ? '未找到该公司，请从下拉列表中选择' : 'Company not found, please select from dropdown');
+        setIsSaving(false);
+        return;
+      }
+
+      // Convert form data to API format
+      const interactionDateTime = formData.date;
+      if (formData.time) {
+        const [hours, minutes] = formData.time.split(':');
+        interactionDateTime.setHours(parseInt(hours), parseInt(minutes));
+      }
+
+      // Map form type to API type
+      const typeMapping: Record<string, string> = {
+        '客户拜访': 'visit',
+        '营销活动': 'marketing',
+        '技术交流': 'technical',
+        '电话沟通': 'phone',
+        '邮件沟通': 'email',
+        '会议': 'meeting'
+      };
+
+      // Map visit method to medium
+      const mediumMapping: Record<string, string> = {
+        '上门拜访': 'in-person',
+        '视频会议': 'video',
+        '电话会议': 'phone',
+        '在线会议': 'online',
+        '客户来访': 'in-person'
+      };
+
+      const interactionData = {
+        interaction_type: typeMapping[formData.type] || 'visit',
+        subject: formData.title,
+        description: formData.description,
+        interaction_date: interactionDateTime.toISOString(),
+        customer_id: customer.customer_id,
+        contact_id: null, // Could be enhanced to select specific contact
+        duration_minutes: null,
+        direction: 'outbound',
+        medium: mediumMapping[formData.visitMethod] || 'in-person',
+        outcome: formData.status === '已完成' ? 'successful' : formData.status === '已取消' ? 'cancelled' : 'pending',
+        sentiment: 'neutral',
+        importance: 3,
+        location: formData.location,
+        private_notes: `${formData.notes}\n\n参与人员: ${formData.participants}\n后续行动: ${formData.followUpActions}`
+      };
+
+      const response = await api.interactionsApi.create(interactionData);
+
+      if (response.error) {
+        throw new Error(response.error);
+      }
+
+      // Success - navigate back
+      alert(language === 'zh' ? '互动记录创建成功！' : 'Interaction created successfully!');
+      onNavigateBack('interactions');
+    } catch (error) {
+      console.error('Error saving interaction:', error);
+      alert(language === 'zh'
+        ? `保存失败: ${error instanceof Error ? error.message : '未知错误'}`
+        : `Save failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleCancel = () => {
@@ -179,12 +273,21 @@ export function CreateInteraction({ language, onNavigateBack }: CreateInteractio
       {/* Header */}
       <div className="flex items-center justify-end">
         <div className="flex space-x-2">
-          <Button variant="outline" onClick={handleCancel}>
+          <Button variant="outline" onClick={handleCancel} disabled={isSaving}>
             {t.cancel}
           </Button>
-          <Button variant="teal" onClick={handleSave}>
-            <Save className="h-4 w-4 mr-2" />
-            {t.save}
+          <Button variant="teal" onClick={handleSave} disabled={isSaving}>
+            {isSaving ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                {language === 'zh' ? '保存中...' : 'Saving...'}
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4 mr-2" />
+                {t.save}
+              </>
+            )}
           </Button>
         </div>
       </div>
@@ -208,12 +311,24 @@ export function CreateInteraction({ language, onNavigateBack }: CreateInteractio
             </div>
             <div className="space-y-2">
               <Label htmlFor="company">{t.company}</Label>
-              <Input
-                id="company"
-                value={formData.company}
-                onChange={(e) => handleInputChange('company', e.target.value)}
-                placeholder={t.companyPlaceholder}
-              />
+              {loadingCustomers ? (
+                <div className="flex items-center justify-center h-10 border rounded-md">
+                  <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                </div>
+              ) : (
+                <Select value={formData.company} onValueChange={(value) => handleInputChange('company', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t.companyPlaceholder} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {customers.map((customer) => (
+                      <SelectItem key={customer.customer_id} value={customer.company_name}>
+                        {customer.company_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
           </div>
 
