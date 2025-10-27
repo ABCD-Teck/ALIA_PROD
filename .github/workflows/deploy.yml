@@ -18,6 +18,8 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
+            set -e  # 任何命令失败时立即退出
+
             echo "======================================"
             echo "🚀 开始自动部署 Alia Web..."
             echo "======================================"
@@ -27,20 +29,27 @@ jobs:
 
             # 拉取最新代码
             echo "⬇️  拉取最新代码..."
-            git pull origin master
+            git pull origin master || { echo "❌ Git pull 失败"; exit 1; }
 
             # 安装依赖（仅安装新增的）
             echo "📦 安装依赖..."
-            npm install --production=false
+            npm install --production=false || { echo "❌ npm install 失败"; exit 1; }
 
             # 构建前端
             echo "🏗️  构建前端..."
             chmod -R 755 node_modules/.bin
-            npm run build
+            npm run build || { echo "❌ 前端构建失败！检查是否缺少依赖或语法错误"; exit 1; }
+
+            # 验证构建产物
+            if [ ! -d "build" ] || [ -z "$(ls -A build)" ]; then
+              echo "❌ 构建目录为空或不存在"
+              exit 1
+            fi
+            echo "✅ 构建验证通过"
 
             # 重启后端服务
             echo "🔄 重启后端服务..."
-            pm2 restart alia-server
+            pm2 restart alia-server || { echo "❌ PM2 重启失败"; exit 1; }
 
             # 显示状态
             echo ""
@@ -49,7 +58,7 @@ jobs:
 
             echo ""
             echo "======================================"
-            echo "✅ 部署完成！"
+            echo "✅ 部署成功完成！"
             echo "======================================"
             echo "🌐 访问地址: http://157.180.38.176"
             echo "⏰ 部署时间: $(date)"
