@@ -130,3 +130,4 @@ Alia_Web/
 ## Support
 
 For questions or access requests, reach out to the Alia development team or open an issue in the repository.
+# Auto-deployment configured
