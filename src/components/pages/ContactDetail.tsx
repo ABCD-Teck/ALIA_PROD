@@ -1,16 +1,17 @@
 import React from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Separator } from '../ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { 
-  User, 
-  Mail, 
-  Phone, 
-  Building, 
-  MapPin, 
-  Calendar, 
+import {
+  User,
+  Mail,
+  Phone,
+  Building,
+  MapPin,
+  Calendar,
   Tag,
   Activity,
   DollarSign,
@@ -19,18 +20,20 @@ import {
   MessageSquare,
   Edit,
   Share,
-  MoreHorizontal
+  MoreHorizontal,
+  ArrowLeft
 } from 'lucide-react';
 import { Language } from '../../App';
 
 interface ContactDetailProps {
   searchQuery: string;
   language: Language;
-  onNavigateBack: (page: any) => void;
-  contactId?: number;
 }
 
-export function ContactDetail({ searchQuery, language, onNavigateBack, contactId }: ContactDetailProps) {
+export function ContactDetail({ searchQuery, language }: ContactDetailProps) {
+  const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+  const contactId = id ? parseInt(id, 10) : undefined;
   const content = {
     zh: {
       title: '联系人详情',
@@ -71,7 +74,8 @@ export function ContactDetail({ searchQuery, language, onNavigateBack, contactId
       addNote: '添加备注',
       scheduleCall: '安排通话',
       sendEmail: '发送邮件',
-      createOpportunity: '创建商机'
+      createOpportunity: '创建商机',
+      backToContacts: '返回联系人'
     },
     en: {
       title: 'Contact Details',
@@ -112,7 +116,8 @@ export function ContactDetail({ searchQuery, language, onNavigateBack, contactId
       addNote: 'Add Note',
       scheduleCall: 'Schedule Call',
       sendEmail: 'Send Email',
-      createOpportunity: 'Create Opportunity'
+      createOpportunity: 'Create Opportunity',
+      backToContacts: 'Back to Contacts'
     }
   };
 
@@ -186,6 +191,17 @@ export function ContactDetail({ searchQuery, language, onNavigateBack, contactId
 
   return (
     <div className="space-y-6">
+      {/* Back Button */}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => navigate("/contacts")}
+        className="flex items-center space-x-2 mb-4"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        <span>{t.backToContacts}</span>
+      </Button>
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-medium">{t.title}</h1>

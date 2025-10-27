@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -13,10 +14,10 @@ import * as api from '../../services/api';
 interface InteractionsProps {
   searchQuery: string;
   language: Language;
-  onViewDetails?: (id: string) => void;
 }
 
-export function Interactions({ searchQuery, language, onViewDetails }: InteractionsProps) {
+export function Interactions({ searchQuery, language }: InteractionsProps) {
+  const navigate = useNavigate();
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [pastInteractions, setPastInteractions] = useState<any[]>([]);
   const [futureInteractions, setFutureInteractions] = useState<any[]>([]);
@@ -153,13 +154,7 @@ export function Interactions({ searchQuery, language, onViewDetails }: Interacti
   };
 
   const handleViewDetails = (interactionId: string) => {
-    if (onViewDetails) {
-      onViewDetails(interactionId);
-    } else {
-      // Fallback: open details dialog
-      setViewDetailsId(interactionId);
-      setViewDetailsOpen(true);
-    }
+    navigate(`/interactions/${interactionId}`);
   };
 
   const handleSaveEdit = async () => {

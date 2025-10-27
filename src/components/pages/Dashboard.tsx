@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { ChevronDown, Check, X, Loader2 } from 'lucide-react';
-import { Language, PageType } from '../../App';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Check, X, Loader2 } from 'lucide-react';
+import { Language } from '../../App';
 import { Button } from '../ui/button';
 import { customersApi, interactionsApi } from '../../services/api';
+import { PaginationControls } from '../ui/PaginationControls';
 
 interface DashboardProps {
   searchQuery: string;
   language: Language;
-  onPageChange: (page: PageType) => void;
 }
 
 interface Customer {
@@ -22,15 +22,19 @@ interface Customer {
   status: string;
 }
 
-export function Dashboard({ searchQuery, language, onPageChange }: DashboardProps) {
+export function Dashboard({ searchQuery, language }: DashboardProps) {
+  const navigate = useNavigate();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedClient, setSelectedClient] = useState<string>('');
   const [totalCustomers, setTotalCustomers] = useState(0);
   const [customersWithContact, setCustomersWithContact] = useState(0);
   const [totalOpportunities, setTotalOpportunities] = useState(0);
   const [futureInteractionsCount, setFutureInteractionsCount] = useState(0);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
   const content = {
     zh: {
@@ -146,11 +150,6 @@ export function Dashboard({ searchQuery, language, onPageChange }: DashboardProp
 
           const totalOpps = customersList.reduce((sum: number, c: Customer) => sum + (c.opportunity_count || 0), 0);
           setTotalOpportunities(totalOpps);
-
-          // Set first customer as selected by default
-          if (customersList.length > 0 && !selectedClient) {
-            setSelectedClient(customersList[0].company_name);
-          }
         } else {
           // Handle case where data is undefined
           setCustomers([]);
@@ -209,11 +208,6 @@ export function Dashboard({ searchQuery, language, onPageChange }: DashboardProp
 
         const totalOpps = customersList.reduce((sum: number, c: Customer) => sum + (c.opportunity_count || 0), 0);
         setTotalOpportunities(totalOpps);
-
-        // Set first customer as selected by default
-        if (customersList.length > 0 && !selectedClient) {
-          setSelectedClient(customersList[0].company_name);
-        }
       } else {
         // Handle case where data is undefined
         setCustomers([]);
@@ -275,6 +269,17 @@ export function Dashboard({ searchQuery, language, onPageChange }: DashboardProp
       )
     : customers;
 
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredCustomers.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const paginatedCustomers = filteredCustomers.slice(startIndex, endIndex);
+
+  // Reset to page 1 when search query changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
   if (loading) {
     return (
       <div className="pt-6 flex items-center justify-center h-64">
@@ -315,7 +320,7 @@ export function Dashboard({ searchQuery, language, onPageChange }: DashboardProp
             <CardTitle className="text-xl">{t.customerList.title}</CardTitle>
             <Button
               className="bg-[#009699] text-white hover:bg-[#007d7f]"
-              onClick={() => onPageChange('create-customer')}
+              onClick={() => navigate('/customers/create')}
             >
               {t.customerList.newCustomer}
             </Button>
@@ -335,9 +340,15 @@ export function Dashboard({ searchQuery, language, onPageChange }: DashboardProp
                 </tr>
               </thead>
               <tbody>
-                {filteredCustomers.map((customer, index) => (
-                  <tr key={customer.customer_id} className="border-b hover:bg-gray-50">
-                    <td className="py-4 px-4 text-sm text-gray-900">{index}</td>
+                {paginatedCustomers.map((customer, index) => (
+                  <tr
+                    key={customer.customer_id}
+                    className="border-b hover:bg-green-50 cursor-pointer transition-colors"
+                    onDoubleClick={() => {
+                      navigate(`/customer-insights/${customer.customer_id}`);
+                    }}
+                  >
+                    <td className="py-4 px-4 text-sm text-gray-900">{startIndex + index}</td>
                     <td className="py-4 px-4 text-sm font-medium text-gray-900">{customer.company_name}</td>
                     <td className="py-4 px-4 text-sm text-gray-600">
                       {customer.industry_name || '-'}
@@ -366,40 +377,17 @@ export function Dashboard({ searchQuery, language, onPageChange }: DashboardProp
             </table>
           </div>
 
-          {/* Bottom Section */}
-          <div className="flex items-center justify-between pt-4">
-            <div className="flex items-center space-x-2">
-              <span className="text-sm text-gray-600">{t.customerList.selectCustomer}</span>
-              <Select value={selectedClient} onValueChange={setSelectedClient}>
-                <SelectTrigger className="w-48">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {customers.map((customer) => (
-                    <SelectItem key={customer.customer_id} value={customer.company_name}>
-                      {customer.company_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex items-center space-x-3">
-              <Button
-                variant="outline"
-                className="text-gray-600"
-                onClick={() => onPageChange('customer-insights')}
-              >
-                {t.customerList.viewDetails}
-              </Button>
-              <Button
-                className="bg-teal-custom text-white hover:bg-teal-custom-80"
-                onClick={() => onPageChange('create-customer')}
-              >
-                {t.customerList.newCustomer}
-              </Button>
-            </div>
-          </div>
+          {/* Pagination */}
+          {filteredCustomers.length > 0 && (
+            <PaginationControls
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={filteredCustomers.length}
+              itemsPerPage={ITEMS_PER_PAGE}
+              onPageChange={setCurrentPage}
+              language={language}
+            />
+          )}
         </CardContent>
       </Card>
 

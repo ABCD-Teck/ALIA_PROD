@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -6,14 +7,13 @@ import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Trash2, ArrowUpDown, X, Loader2 } from 'lucide-react';
-import { Language, PageType } from '../../App';
+import { Language } from '../../App';
 import { tasksApi } from '../../services/api';
+import { PaginationControls } from '../ui/PaginationControls';
 
 interface TaskManagerProps {
   searchQuery: string;
   language: Language;
-  onNavigate?: (page: PageType) => void;
-  onViewTask?: (taskId: number) => void;
 }
 
 interface Task {
@@ -38,12 +38,17 @@ interface Task {
 type SortField = 'subject' | 'priority' | 'status' | 'dueDate' | 'contactName' | 'companyName';
 type SortOrder = 'asc' | 'desc';
 
-export function TaskManager({ searchQuery, language, onNavigate, onViewTask }: TaskManagerProps) {
+export function TaskManager({ searchQuery, language }: TaskManagerProps) {
+  const navigate = useNavigate();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sortField, setSortField] = useState<SortField>('dueDate');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
   // Fetch active tasks on mount
   useEffect(() => {
@@ -220,6 +225,17 @@ export function TaskManager({ searchQuery, language, onNavigate, onViewTask }: T
     return filtered;
   })();
 
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredAndSortedTasks.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const paginatedTasks = filteredAndSortedTasks.slice(startIndex, endIndex);
+
+  // Reset to page 1 when search query changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
   const handleSort = (field: SortField) => {
     if (sortField === field) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -230,9 +246,7 @@ export function TaskManager({ searchQuery, language, onNavigate, onViewTask }: T
   };
 
   const handleRowDoubleClick = (taskId: number) => {
-    if (onViewTask) {
-      onViewTask(taskId);
-    }
+    navigate(`/tasks/${taskId}`);
   };
 
   const getPriorityColor = (priority: string) => {
@@ -304,7 +318,7 @@ export function TaskManager({ searchQuery, language, onNavigate, onViewTask }: T
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredAndSortedTasks.map((task) => (
+                {paginatedTasks.map((task) => (
                   <TableRow
                     key={task.id}
                     className="cursor-pointer hover:bg-gray-50 h-16"
@@ -351,6 +365,18 @@ export function TaskManager({ searchQuery, language, onNavigate, onViewTask }: T
                 ))}
               </TableBody>
             </Table>
+          )}
+
+          {/* Pagination */}
+          {!loading && filteredAndSortedTasks.length > 0 && (
+            <PaginationControls
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={filteredAndSortedTasks.length}
+              itemsPerPage={ITEMS_PER_PAGE}
+              onPageChange={setCurrentPage}
+              language={language}
+            />
           )}
         </CardContent>
       </Card>

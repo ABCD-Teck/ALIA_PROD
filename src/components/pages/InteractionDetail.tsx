@@ -1,27 +1,32 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
-import { ArrowLeft, Loader2, Calendar, User, MapPin, Clock } from 'lucide-react';
-import { Language, PageType } from '../../App';
+import { Input } from '../ui/input';
+import { ArrowLeft, Loader2, Calendar, User, MapPin, Clock, Edit, Check, X } from 'lucide-react';
+import { Language } from '../../App';
 import * as api from '../../services/api';
 
 interface InteractionDetailProps {
   searchQuery: string;
   language: Language;
-  onNavigateBack: (page: PageType) => void;
-  interactionId?: string;
 }
 
 export function InteractionDetail({
   searchQuery,
-  language,
-  onNavigateBack,
-  interactionId
+  language
 }: InteractionDetailProps) {
+  const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+  const interactionId = id;
   const [interaction, setInteraction] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isEditingTime, setIsEditingTime] = useState(false);
+  const [editedDate, setEditedDate] = useState<string>('');
+  const [editedTime, setEditedTime] = useState<string>('');
+  const [isSavingTime, setIsSavingTime] = useState(false);
 
   // Fetch interaction details from API
   useEffect(() => {
@@ -61,6 +66,7 @@ export function InteractionDetail({
     zh: {
       title: '互动详情',
       backButton: '返回',
+      viewInCalendar: '在日历中查看',
       company: '公司：',
       visitDate: '拜访时间：',
       visitTarget: '拜访对象：',
@@ -75,6 +81,7 @@ export function InteractionDetail({
     en: {
       title: 'Interaction Details',
       backButton: 'Back',
+      viewInCalendar: 'View in Calendar',
       company: 'Company:',
       visitDate: 'Visit Date:',
       visitTarget: 'Visit Target:',
@@ -89,6 +96,70 @@ export function InteractionDetail({
   };
 
   const t = content[language];
+
+  // Initialize edit fields when interaction is loaded
+  useEffect(() => {
+    if (interaction) {
+      const interactionDate = new Date(interaction.interaction_date);
+      setEditedDate(interactionDate.toISOString().split('T')[0]);
+      const hours = interactionDate.getHours().toString().padStart(2, '0');
+      const minutes = interactionDate.getMinutes().toString().padStart(2, '0');
+      setEditedTime(`${hours}:${minutes}`);
+    }
+  }, [interaction]);
+
+  const handleEditTime = () => {
+    setIsEditingTime(true);
+  };
+
+  const handleCancelEditTime = () => {
+    setIsEditingTime(false);
+    // Reset to original values
+    if (interaction) {
+      const interactionDate = new Date(interaction.interaction_date);
+      setEditedDate(interactionDate.toISOString().split('T')[0]);
+      const hours = interactionDate.getHours().toString().padStart(2, '0');
+      const minutes = interactionDate.getMinutes().toString().padStart(2, '0');
+      setEditedTime(`${hours}:${minutes}`);
+    }
+  };
+
+  const handleSaveTime = async () => {
+    try {
+      setIsSavingTime(true);
+
+      // Combine date and time
+      const [hours, minutes] = editedTime.split(':');
+      const newDateTime = new Date(editedDate);
+      newDateTime.setHours(parseInt(hours), parseInt(minutes));
+
+      // Update via API
+      const response = await api.interactionsApi.update(interactionId!, {
+        interaction_date: newDateTime.toISOString()
+      });
+
+      if (response.error) {
+        throw new Error(response.error);
+      }
+
+      // Update local state
+      setInteraction({
+        ...interaction,
+        interaction_date: newDateTime.toISOString()
+      });
+
+      setIsEditingTime(false);
+      alert(language === 'zh' ? '时间更新成功！' : 'Time updated successfully!');
+    } catch (err) {
+      console.error('Error updating time:', err);
+      alert(language === 'zh'
+        ? `更新失败: ${err instanceof Error ? err.message : '未知错误'}`
+        : `Update failed: ${err instanceof Error ? err.message : 'Unknown error'}`
+      );
+    } finally {
+      setIsSavingTime(false);
+    }
+  };
 
   // Map interaction type to display text
   const getTypeText = (type: string) => {
@@ -149,7 +220,7 @@ export function InteractionDetail({
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => onNavigateBack('interactions')}
+          onClick={() => navigate('/interactions')}
           className="flex items-center space-x-2 mb-4"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -165,17 +236,29 @@ export function InteractionDetail({
 
   return (
     <div className="pt-6 space-y-6">
-      {/* Header with Back Button */}
-      <div className="flex items-center space-x-4">
-        <Button 
-          variant="ghost" 
+      {/* Header with Back Button and Calendar Button */}
+      <div className="flex items-center justify-between">
+        <Button
+          variant="ghost"
           size="sm"
-          onClick={() => onNavigateBack('interactions')}
+          onClick={() => navigate('/interactions')}
           className="flex items-center space-x-2"
         >
           <ArrowLeft className="h-4 w-4" />
           <span>{t.backButton}</span>
         </Button>
+
+        {interaction.interaction_date && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate('/calendar')}
+            className="flex items-center space-x-2"
+          >
+            <Calendar className="h-4 w-4" />
+            <span>{t.viewInCalendar}</span>
+          </Button>
+        )}
       </div>
 
       {/* Main Content */}
@@ -212,9 +295,59 @@ export function InteractionDetail({
               <div className="grid grid-cols-12 gap-4">
                 <span className="col-span-3 font-medium text-gray-700">{t.visitDate}</span>
                 <span className="col-span-9 text-gray-900">
-                  {new Date(interaction.interaction_date).toLocaleString(
-                    language === 'zh' ? 'zh-CN' : 'en-US',
-                    { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }
+                  {isEditingTime ? (
+                    <div className="flex items-center gap-3">
+                      <Input
+                        type="date"
+                        value={editedDate}
+                        onChange={(e) => setEditedDate(e.target.value)}
+                        className="w-48"
+                      />
+                      <Input
+                        type="time"
+                        value={editedTime}
+                        onChange={(e) => setEditedTime(e.target.value)}
+                        className="w-32"
+                      />
+                      <Button
+                        size="sm"
+                        variant="default"
+                        onClick={handleSaveTime}
+                        disabled={isSavingTime}
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        {isSavingTime ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Check className="h-4 w-4" />
+                        )}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleCancelEditTime}
+                        disabled={isSavingTime}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span>
+                        {new Date(interaction.interaction_date).toLocaleString(
+                          language === 'zh' ? 'zh-CN' : 'en-US',
+                          { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }
+                        )}
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={handleEditTime}
+                        className="h-8 px-2"
+                      >
+                        <Edit className="h-3 w-3" />
+                      </Button>
+                    </div>
                   )}
                 </span>
               </div>

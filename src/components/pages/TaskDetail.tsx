@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -6,13 +7,11 @@ import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { ArrowLeft, Save, Loader2, Archive } from 'lucide-react';
-import { Language, PageType } from '../../App';
+import { Language } from '../../App';
 import { tasksApi, customersApi, contactsApi } from '../../services/api';
 
 interface TaskDetailProps {
   language: Language;
-  taskId: number;
-  onNavigateBack: (page: PageType) => void;
 }
 
 interface TaskFormData {
@@ -37,7 +36,11 @@ interface Contact {
   last_name: string;
 }
 
-export function TaskDetail({ language, taskId, onNavigateBack }: TaskDetailProps) {
+export function TaskDetail({ language }: TaskDetailProps) {
+  const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+  const taskId = id;
+
   const [formData, setFormData] = useState<TaskFormData>({
     subject: '',
     description: '',
@@ -254,7 +257,7 @@ export function TaskDetail({ language, taskId, onNavigateBack }: TaskDetailProps
         setSuccessMessage(t.saveSuccess);
         // Wait a moment to show success message, then navigate back
         setTimeout(() => {
-          onNavigateBack('task-manager');
+          navigate('/tasks');
         }, 1500);
       } else {
         let errorMsg = t.errorMessage;
@@ -300,7 +303,7 @@ export function TaskDetail({ language, taskId, onNavigateBack }: TaskDetailProps
         setSuccessMessage(t.archiveSuccess);
         // Wait a moment to show success message, then navigate back
         setTimeout(() => {
-          onNavigateBack('task-manager');
+          navigate('/tasks');
         }, 1500);
       } else {
         const errorMsg = response.error || t.archiveError;
@@ -316,7 +319,7 @@ export function TaskDetail({ language, taskId, onNavigateBack }: TaskDetailProps
   };
 
   const handleCancel = () => {
-    onNavigateBack('task-manager');
+    navigate('/tasks');
   };
 
   if (isLoading) {

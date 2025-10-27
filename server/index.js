@@ -23,6 +23,7 @@ const annotationsRouter = require('./routes/annotations');
 const marketInsightsRouter = require('./routes/marketInsights');
 const translateRouter = require('./routes/translate');
 const miaPipelineRouter = require('./routes/miaPipeline');
+const calendarRouter = require('./routes/calendar');
 
 // Use routes
 app.use('/api/auth', authRouter);
@@ -37,6 +38,7 @@ app.use('/api/annotations', annotationsRouter);
 app.use('/api/market-insights', marketInsightsRouter);
 app.use('/api/translate', translateRouter);
 app.use('/api/mia-pipeline', miaPipelineRouter);
+app.use('/api/calendar', calendarRouter);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

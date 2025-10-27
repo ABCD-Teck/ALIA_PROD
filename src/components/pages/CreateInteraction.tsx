@@ -8,12 +8,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Calendar } from '../ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { ArrowLeft, Save, Calendar as CalendarIcon, Loader2 } from 'lucide-react';
-import { Language, PageType } from '../../App';
+import { useNavigate } from 'react-router-dom';
+import { Language } from '../../App';
 import * as api from '../../services/api';
 
 interface CreateInteractionProps {
   language: Language;
-  onNavigateBack: (page: PageType) => void;
+  
 }
 
 type InteractionType = '客户拜访' | '营销活动' | '技术交流' | '电话沟通' | '邮件沟通' | '会议';
@@ -35,7 +36,8 @@ interface InteractionFormData {
   notes: string;
 }
 
-export function CreateInteraction({ language, onNavigateBack }: CreateInteractionProps) {
+export function CreateInteraction({ language }: CreateInteractionProps) {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState<InteractionFormData>({
     title: '',
     company: '',
@@ -252,7 +254,7 @@ export function CreateInteraction({ language, onNavigateBack }: CreateInteractio
 
       // Success - navigate back
       alert(language === 'zh' ? '互动记录创建成功！' : 'Interaction created successfully!');
-      onNavigateBack('interactions');
+      navigate('/interactions');
     } catch (error) {
       console.error('Error saving interaction:', error);
       alert(language === 'zh'
@@ -265,7 +267,7 @@ export function CreateInteraction({ language, onNavigateBack }: CreateInteractio
   };
 
   const handleCancel = () => {
-    onNavigateBack('interactions');
+    navigate('/interactions');
   };
 
   return (

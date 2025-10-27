@@ -10,15 +10,17 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { CalendarIcon, Save, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { zhCN, enUS } from 'date-fns/locale';
-import { Language, PageType } from '../../App';
+import { useNavigate } from 'react-router-dom';
+import { Language } from '../../App';
 import { tasksApi } from '../../services/api';
 
 interface CreateTaskProps {
   language: Language;
-  onNavigateBack: (page: PageType) => void;
+  
 }
 
-export function CreateTask({ language, onNavigateBack }: CreateTaskProps) {
+export function CreateTask({ language }: CreateTaskProps) {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     subject: '',
     priority: '',
@@ -167,7 +169,7 @@ export function CreateTask({ language, onNavigateBack }: CreateTaskProps) {
       console.log('Task created successfully:', response.data);
 
       // Navigate back to task manager
-      onNavigateBack('task-manager');
+      navigate('/tasks');
     } catch (err) {
       console.error('Error creating task:', err);
       setError(err instanceof Error ? err.message : 'Failed to create task');
@@ -177,7 +179,7 @@ export function CreateTask({ language, onNavigateBack }: CreateTaskProps) {
   };
 
   const handleCancel = () => {
-    onNavigateBack('task-manager');
+    navigate('/tasks');
   };
 
   const updateFormData = (field: string, value: any) => {

@@ -11,18 +11,18 @@ import { authApi } from '../../services/api';
 
 interface SignInPageProps {
   language: Language;
+  onLanguageChange: (language: Language) => void;
   onSignIn: () => void;
   onBackToLanding: () => void;
   onSignUp: () => void;
-  onLanguageChange: (language: Language) => void;
 }
 
 export const SignInPage: React.FC<SignInPageProps> = ({
   language,
+  onLanguageChange,
   onSignIn,
   onBackToLanding,
-  onSignUp,
-  onLanguageChange
+  onSignUp
 }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -81,7 +81,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
       } else if (response.data) {
         // Store user data in localStorage
         localStorage.setItem('user', JSON.stringify(response.data.user));
-        // Call onSignIn to transition to the main app
+        // Call onSignIn to update authentication state
         onSignIn();
       }
     } catch (err) {
@@ -95,8 +95,8 @@ export const SignInPage: React.FC<SignInPageProps> = ({
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="flex justify-between items-center p-6 bg-white border-b border-gray-200">
-        <Button 
-          variant="ghost" 
+        <Button
+          variant="ghost"
           onClick={onBackToLanding}
           className="text-gray-600 hover:text-gray-900 flex items-center gap-2"
         >
@@ -228,8 +228,8 @@ export const SignInPage: React.FC<SignInPageProps> = ({
             <div className="mt-8 text-center">
               <p className="text-sm text-gray-600">
                 {content.noAccount}{' '}
-                <Button 
-                  variant="link" 
+                <Button
+                  variant="link"
                   onClick={onSignUp}
                   className="text-[#009699] hover:text-[#007d80] p-0 h-auto font-medium"
                 >

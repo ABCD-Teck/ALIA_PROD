@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -10,7 +11,6 @@ import * as api from '../../services/api';
 interface ArchivedOpportunitiesProps {
   searchQuery: string;
   language: Language;
-  onNavigateBack: () => void;
 }
 
 type Priority = 'High' | 'Medium' | 'Low';
@@ -42,9 +42,9 @@ interface Opportunity {
 
 export function ArchivedOpportunities({
   searchQuery,
-  language,
-  onNavigateBack
+  language
 }: ArchivedOpportunitiesProps) {
+  const navigate = useNavigate();
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -290,7 +290,7 @@ export function ArchivedOpportunities({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <Button variant="outline" onClick={onNavigateBack}>
+          <Button variant="outline" onClick={() => navigate('/opportunities')}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             {t.backToOpportunities}
           </Button>

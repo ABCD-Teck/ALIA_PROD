@@ -22,6 +22,7 @@ import {
 import { Language } from '../../App';
 import { marketInsightsApi, translationApi } from '../../services/api';
 import { ArticleModal } from './ArticleModal';
+import { PaginationControls } from '../ui/PaginationControls';
 
 interface MarketInsightsProps {
   searchQuery: string;
@@ -179,6 +180,10 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
   // Auto-translation cache for Chinese interface
   const [translationCache, setTranslationCache] = useState<Record<string, { title?: string; content?: string; source?: string }>>({});
   const [translatingItems, setTranslatingItems] = useState<Set<string>>(new Set());
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 5;
 
   // Dropdown 开关状态
   const [dropdownOpen, setDropdownOpen] = useState<{
@@ -591,6 +596,17 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
   // Filter news (now used as fallback or for local filtering)
   const filteredNews = newsData;
 
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredNews.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const paginatedNews = filteredNews.slice(startIndex, endIndex);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedLevel1, selectedLevel2, selectedLevel3, selectedTimeFrame, searchQuery, customTags.join(',')]);
+
   // 添加自定义标签
   const addCustomTag = () => {
     if (newTagInput.trim() && !customTags.includes(newTagInput.trim())) {
@@ -925,7 +941,7 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
       {/* 新闻列表 */}
       {!loading || newsData.length > 0 ? (
         <div className="space-y-4">
-        {filteredNews.map((news) => {
+        {paginatedNews.map((news) => {
           // Smart fallback with auto-translation: use Chinese if available, auto-translate if not, otherwise use English
           const getTitle = () => {
             if (language === 'zh') {
@@ -1085,6 +1101,18 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
         })}
       </div>
       ) : null}
+
+      {/* Pagination Controls */}
+      {!loading && filteredNews.length > 0 && (
+        <PaginationControls
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={filteredNews.length}
+          itemsPerPage={ITEMS_PER_PAGE}
+          onPageChange={setCurrentPage}
+          language={language}
+        />
+      )}
 
       {/* 加载更多按钮 */}
       {filteredNews.length > 0 && hasMore && !loading && (

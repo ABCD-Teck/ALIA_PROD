@@ -6,14 +6,16 @@ import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Save } from 'lucide-react';
-import { Language, PageType } from '../../App';
+import { useNavigate } from 'react-router-dom';
+import { Language } from '../../App';
 
 interface CreateContactProps {
   language: Language;
-  onNavigateBack: (page: PageType) => void;
+  
 }
 
-export function CreateContact({ language, onNavigateBack }: CreateContactProps) {
+export function CreateContact({ language }: CreateContactProps) {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -228,11 +230,11 @@ export function CreateContact({ language, onNavigateBack }: CreateContactProps) 
     // TODO: 在这里处理保存逻辑
     console.log('Saving contact:', formData);
     // 保存成功后返回联系人页面
-    onNavigateBack('contacts');
+    navigate('/contacts');
   };
 
   const handleCancel = () => {
-    onNavigateBack('contacts');
+    navigate('/contacts');
   };
 
   const updateFormData = (field: string, value: string) => {

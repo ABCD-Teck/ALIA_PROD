@@ -1,159 +1,155 @@
 import React from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Search, Globe, ChevronDown, Plus, Bell, Archive } from 'lucide-react';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Breadcrumb } from './Breadcrumb';
-import { PageType, Language, CustomerInsightsTab } from '../App';
+import { Language } from '../App';
 
 interface NavbarProps {
-  currentPage: PageType;
   language: Language;
   onLanguageChange: (language: Language) => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
-  onPageChange: (page: PageType) => void;
-  customerInsightsTab?: CustomerInsightsTab;
-  onNewCustomer?: () => void;
-  onNewOpportunity?: () => void;
-  onNewInteraction?: () => void;
-  onNewTask?: () => void;
-  onNewEvent?: () => void;
-  onNewContact?: () => void;
-  onViewArchivedOpportunities?: () => void;
-  onViewArchivedInteractions?: () => void;
-  onViewArchivedTasks?: () => void;
 }
 
 const searchPlaceholders = {
   zh: {
-    dashboard: '搜索客户、商机、任务...',
-    'market-insights': '搜索热门资讯...',
-    'customer-insights': '按姓名、行业、标签搜索...',
-    opportunities: '按姓名、客户、销售代表、状态搜索...',
-    'archived-opportunities': '搜索归档商机...',
-    'create-opportunity': '搜索客户、产品、方案...',
-    interactions: '按客户、日期、类型搜索...',
-    'archived-interactions': '搜索归档互动记录...',
-    'create-interaction': '搜索公司、客户、产品...',
-    'interaction-detail': '搜索详情内容...',
-    'task-manager': '按主题、状态、截止日期搜索...',
-    'archived-tasks': '搜索归档任务...',
-    'create-task': '搜索任务模板、负责人...',
-    calendar: '按标题、日期、事件类型搜索...',
-    'create-event': '搜索事件模板、参与者...',
-    contacts: '按姓名、电话、邮箱、公司搜索...',
-    'create-contact': '搜索联系人模板、公司...',
-    settings: '搜索设置...',
-    'data-flow': '在图表中搜索...',
-    'visual-data-flow': '在可视化图表中搜索...'
+    '/': '搜索客户、商机、任务...',
+    '/market-insights': '搜索热门资讯...',
+    '/customer-insights': '按姓名、行业、标签搜索...',
+    '/opportunities': '按姓名、客户、销售代表、状态搜索...',
+    '/opportunities/archived': '搜索归档商机...',
+    '/opportunities/create': '搜索客户、产品、方案...',
+    '/interactions': '按客户、日期、类型搜索...',
+    '/interactions/archived': '搜索归档互动记录...',
+    '/interactions/create': '搜索公司、客户、产品...',
+    '/tasks': '按主题、状态、截止日期搜索...',
+    '/tasks/archived': '搜索归档任务...',
+    '/tasks/create': '搜索任务模板、负责人...',
+    '/calendar': '按标题、日期、事件类型搜索...',
+    '/calendar/create': '搜索事件模板、参与者...',
+    '/contacts': '按姓名、电话、邮箱、公司搜索...',
+    '/contacts/create': '搜索联系人模板、公司...',
+    '/settings': '搜索设置...',
   },
   en: {
-    dashboard: 'Search customers, opportunities, tasks...',
-    'market-insights': 'Search market insights...',
-    'customer-insights': 'Search by name, industry, tags...',
-    opportunities: 'Search by name, client, sales rep, status...',
-    'archived-opportunities': 'Search archived opportunities...',
-    'create-opportunity': 'Search customers, products, solutions...',
-    interactions: 'Search by customer, date, type...',
-    'archived-interactions': 'Search archived interactions...',
-    'create-interaction': 'Search companies, customers, products...',
-    'interaction-detail': 'Search detail content...',
-    'task-manager': 'Search by subject, status, due date...',
-    'archived-tasks': 'Search archived tasks...',
-    'create-task': 'Search task templates, assignees...',
-    calendar: 'Search by title, date, event type...',
-    'create-event': 'Search event templates, attendees...',
-    contacts: 'Search by name, phone, email, company...',
-    'create-contact': 'Search contact templates, companies...',
-    settings: 'Search settings...',
-    'data-flow': 'Search in diagrams...',
-    'visual-data-flow': 'Search in visual diagram...'
+    '/': 'Search customers, opportunities, tasks...',
+    '/market-insights': 'Search market insights...',
+    '/customer-insights': 'Search by name, industry, tags...',
+    '/opportunities': 'Search by name, client, sales rep, status...',
+    '/opportunities/archived': 'Search archived opportunities...',
+    '/opportunities/create': 'Search customers, products, solutions...',
+    '/interactions': 'Search by customer, date, type...',
+    '/interactions/archived': 'Search archived interactions...',
+    '/interactions/create': 'Search companies, customers, products...',
+    '/tasks': 'Search by subject, status, due date...',
+    '/tasks/archived': 'Search archived tasks...',
+    '/tasks/create': 'Search task templates, assignees...',
+    '/calendar': 'Search by title, date, event type...',
+    '/calendar/create': 'Search event templates, attendees...',
+    '/contacts': 'Search by name, phone, email, company...',
+    '/contacts/create': 'Search contact templates, companies...',
+    '/settings': 'Search settings...',
   }
 };
 
 export function Navbar({
-  currentPage,
   language,
   onLanguageChange,
   searchQuery,
-  onSearchChange,
-  onPageChange,
-  customerInsightsTab,
-  onNewCustomer,
-  onNewOpportunity,
-  onViewArchivedOpportunities,
-  onViewArchivedInteractions,
-  onViewArchivedTasks,
-  onNewInteraction,
-  onNewTask,
-  onNewEvent,
-  onNewContact
+  onSearchChange
 }: NavbarProps) {
-  const placeholder = searchPlaceholders[language][currentPage];
-  // 模拟通知状态 - 实际项目中应该从props或context获取
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Get the most specific matching placeholder
+  const getPlaceholder = () => {
+    const path = location.pathname;
+    const placeholders = searchPlaceholders[language];
+
+    // Try exact match first
+    if (placeholders[path]) {
+      return placeholders[path];
+    }
+
+    // Try partial matches for detail pages
+    for (const key in placeholders) {
+      if (path.startsWith(key) && key !== '/') {
+        return placeholders[key];
+      }
+    }
+
+    // Default to dashboard placeholder
+    return placeholders['/'];
+  };
+
+  const placeholder = getPlaceholder();
   const hasNotifications = true;
 
   // 渲染页面特定的操作按钮
   const renderPageActions = () => {
-    if (currentPage === 'customer-insights') {
+    const path = location.pathname;
+
+    if (path.startsWith('/customer-insights')) {
       const buttonText = language === 'zh' ? '新建客户' : 'New Customer';
       return (
-        <Button variant="teal" onClick={onNewCustomer}>
+        <Button variant="teal" onClick={() => navigate('/customers/create')}>
           <Plus className="mr-2 h-4 w-4" />
           {buttonText}
         </Button>
       );
-    } else if (currentPage === 'opportunities') {
+    } else if (path === '/opportunities') {
       const newButtonText = language === 'zh' ? '新建商机' : 'New Opportunity';
       const archiveButtonText = language === 'zh' ? '归档' : 'Archive';
       return (
         <div className="flex gap-2">
-          <Button variant="outline" onClick={onViewArchivedOpportunities}>
+          <Button variant="outline" onClick={() => navigate('/opportunities/archived')}>
             <Archive className="mr-2 h-4 w-4" />
             {archiveButtonText}
           </Button>
-          <Button variant="teal" onClick={onNewOpportunity}>
+          <Button variant="teal" onClick={() => navigate('/opportunities/create')}>
             <Plus className="mr-2 h-4 w-4" />
             {newButtonText}
           </Button>
         </div>
       );
-    } else if (currentPage === 'interactions') {
+    } else if (path === '/interactions') {
       const newButtonText = language === 'zh' ? '新建互动' : 'New Interaction';
       const archiveButtonText = language === 'zh' ? '归档' : 'Archive';
       return (
         <div className="flex gap-2">
-          <Button variant="outline" onClick={onViewArchivedInteractions}>
+          <Button variant="outline" onClick={() => navigate('/interactions/archived')}>
             <Archive className="mr-2 h-4 w-4" />
             {archiveButtonText}
           </Button>
-          <Button variant="teal" onClick={onNewInteraction}>
+          <Button variant="teal" onClick={() => navigate('/interactions/create')}>
             <Plus className="mr-2 h-4 w-4" />
             {newButtonText}
           </Button>
         </div>
       );
-    } else if (currentPage === 'task-manager') {
+    } else if (path === '/tasks') {
       const newButtonText = language === 'zh' ? '新建任务' : 'New Task';
       const archiveButtonText = language === 'zh' ? '归档' : 'Archive';
       return (
         <div className="flex gap-2">
-          <Button variant="outline" onClick={onViewArchivedTasks}>
+          <Button variant="outline" onClick={() => navigate('/tasks/archived')}>
             <Archive className="mr-2 h-4 w-4" />
             {archiveButtonText}
           </Button>
-          <Button variant="teal" onClick={onNewTask}>
+          <Button variant="teal" onClick={() => navigate('/tasks/create')}>
             <Plus className="mr-2 h-4 w-4" />
             {newButtonText}
           </Button>
         </div>
       );
-    } else if (currentPage === 'calendar') {
+    } else if (path === '/calendar') {
       const buttonText = language === 'zh' ? '新建日程' : 'New Event';
       return (
-        <Button variant="teal" onClick={onNewEvent}>
+        <Button variant="teal" onClick={() => navigate('/calendar/create')}>
           <Plus className="mr-2 h-4 w-4" />
           {buttonText}
         </Button>
@@ -240,11 +236,8 @@ export function Navbar({
       </nav>
       
       <div className="px-6 flex items-center justify-between">
-        <Breadcrumb 
-          currentPage={currentPage} 
-          language={language} 
-          onNavigate={onPageChange}
-          customerInsightsTab={customerInsightsTab}
+        <Breadcrumb
+          language={language}
         />
         {renderPageActions()}
       </div>

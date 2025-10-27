@@ -6,7 +6,8 @@ import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Save, Upload, X, Loader2 } from 'lucide-react';
-import { Language, PageType } from '../../App';
+import { useNavigate } from 'react-router-dom';
+import { Language } from '../../App';
 import { customersApi } from '../../services/api';
 
 interface CustomerFormState {
@@ -103,10 +104,11 @@ const createInitialFormState = (): CustomerFormState => ({
 
 interface CreateCustomerProps {
   language: Language;
-  onNavigateBack: (page: PageType) => void;
+  
 }
 
-export function CreateCustomer({ language, onNavigateBack }: CreateCustomerProps) {
+export function CreateCustomer({ language }: CreateCustomerProps) {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState<CustomerFormState>(createInitialFormState());
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -416,7 +418,7 @@ export function CreateCustomer({ language, onNavigateBack }: CreateCustomerProps
         clearTimeout(redirectTimeoutRef.current);
       }
       redirectTimeoutRef.current = window.setTimeout(() => {
-        onNavigateBack('customer-insights');
+        navigate('/customer-insights');
       }, 1500);
     } catch (err) {
       console.error('Error creating customer:', err);
@@ -434,7 +436,7 @@ export function CreateCustomer({ language, onNavigateBack }: CreateCustomerProps
       clearTimeout(redirectTimeoutRef.current);
       redirectTimeoutRef.current = null;
     }
-    onNavigateBack('customer-insights');
+    navigate('/customer-insights');
   };
 
   const updateFormData = (field: keyof Omit<CustomerFormState, 'documents'>, value: string) => {

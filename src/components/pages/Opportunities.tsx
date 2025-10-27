@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -13,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Language } from '../../App';
 import * as api from '../../services/api';
+import { PaginationControls } from '../ui/PaginationControls';
 
 interface OpportunitiesProps {
   searchQuery: string;
@@ -21,7 +23,6 @@ interface OpportunitiesProps {
   onLoadingChange?: (isLoading: boolean) => void;
   triggerSave?: boolean;
   onSaveComplete?: () => void;
-  onViewOpportunity?: (opportunityId: string) => void;
 }
 
 type Priority = 'High' | 'Medium' | 'Low';
@@ -63,15 +64,19 @@ export function Opportunities({
   onUnsavedChangesChange,
   onLoadingChange,
   triggerSave,
-  onSaveComplete,
-  onViewOpportunity
+  onSaveComplete
 }: OpportunitiesProps) {
+  const navigate = useNavigate();
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [selectedOpportunity, setSelectedOpportunity] = useState<string>('all');
   const [sortField, setSortField] = useState<keyof Opportunity>('createdDate');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
   // Fetch opportunities from API
   const fetchOpportunities = async () => {
@@ -294,6 +299,17 @@ export function Opportunities({
     return 0;
   });
 
+  // Calculate pagination
+  const totalPages = Math.ceil(sortedOpportunities.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const paginatedOpportunities = sortedOpportunities.slice(startIndex, endIndex);
+
+  // Reset to page 1 when search query or selection changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedOpportunity]);
+
   const handleSort = (field: keyof Opportunity) => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -366,9 +382,7 @@ export function Opportunities({
 
   // Handle double-click on row to view opportunity details
   const handleRowDoubleClick = (opportunityId: number | string) => {
-    if (onViewOpportunity) {
-      onViewOpportunity(opportunityId.toString());
-    }
+    navigate(`/opportunities/${opportunityId.toString()}`);
   };
 
 
@@ -476,7 +490,7 @@ export function Opportunities({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {sortedOpportunities.map((opportunity) => (
+                    {paginatedOpportunities.map((opportunity) => (
                       <TableRow
                         key={opportunity.id}
                         className="cursor-pointer hover:bg-green-50 transition-colors"
@@ -524,6 +538,18 @@ export function Opportunities({
                   </TableBody>
                 </Table>
               </div>
+
+              {/* Pagination */}
+              {sortedOpportunities.length > 0 && (
+                <PaginationControls
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalItems={sortedOpportunities.length}
+                  itemsPerPage={ITEMS_PER_PAGE}
+                  onPageChange={setCurrentPage}
+                  language={language}
+                />
+              )}
             </CardContent>
           </Card>
         )}

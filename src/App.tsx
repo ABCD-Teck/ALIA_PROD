@@ -1,33 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { BrowserRouter, useLocation, useNavigate } from 'react-router-dom';
 import { Sidebar } from './components/Sidebar';
 import { Navbar } from './components/Navbar';
-import { Dashboard } from './components/pages/Dashboard';
-import { MarketInsights } from './components/pages/MarketInsights';
-import { CustomerInsights } from './components/pages/CustomerInsights';
-import { Opportunities } from './components/pages/Opportunities';
-import { Interactions } from './components/pages/Interactions';
-import { InteractionDetail } from './components/pages/InteractionDetail';
-import { TaskManager } from './components/pages/TaskManager';
-import { TaskDetail } from './components/pages/TaskDetail';
-import { Calendar } from './components/pages/Calendar';
-import { Contacts } from './components/pages/Contacts';
-import { Settings } from './components/pages/Settings';
-import { CreateOpportunity } from './components/pages/CreateOpportunity';
-import { OpportunityDetail } from './components/pages/OpportunityDetail';
-import { ArchivedOpportunities } from './components/pages/ArchivedOpportunities';
-import { ArchivedInteractions } from './components/pages/ArchivedInteractions';
-import { ArchivedTasks } from './components/pages/ArchivedTasks';
-import { CreateInteraction } from './components/pages/CreateInteraction';
-import { CreateTask } from './components/pages/CreateTask';
-import { CreateContact } from './components/pages/CreateContact';
-import { CreateCustomer } from './components/pages/CreateCustomer';
-import { CreateEvent } from './components/pages/CreateEvent';
-import { ContactDetail } from './components/pages/ContactDetail';
 import { NewContactModal } from './components/NewContactModal';
 import { LandingPage } from './components/auth/LandingPage';
 import { SignInPage } from './components/auth/SignInPage';
 import { SignUpPage } from './components/auth/SignUpPage';
 import { authApi, clearTokens, getAccessToken } from './services/api';
+import { AppRoutes } from './router';
 
 
 
@@ -61,20 +41,56 @@ export type CustomerInsightsTab = 'overview' | 'financial' | 'interaction' | 'ne
 
 export type AuthPage = 'landing' | 'signin' | 'signup';
 
+// Component that uses router hooks (must be inside BrowserRouter)
+function AuthenticatedApp() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [language, setLanguage] = useState<Language>('zh');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isNewContactModalOpen, setIsNewContactModalOpen] = useState(false);
+
+  const handleSignOut = () => {
+    authApi.logout();
+    localStorage.removeItem('user');
+    setSearchQuery('');
+    window.location.href = '/'; // Force reload to landing page
+  };
+
+  return (
+    <div className="h-screen flex bg-background">
+      <Sidebar
+        language={language}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+        onSignOut={handleSignOut}
+      />
+      <div className="flex-1 flex flex-col">
+        <Navbar
+          language={language}
+          onLanguageChange={setLanguage}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+        />
+        <main className="flex-1 overflow-auto px-6 pb-6">
+          <AppRoutes searchQuery={searchQuery} language={language} />
+        </main>
+      </div>
+
+      <NewContactModal
+        isOpen={isNewContactModalOpen}
+        onClose={() => setIsNewContactModalOpen(false)}
+        language={language}
+      />
+    </div>
+  );
+}
+
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [currentAuthPage, setCurrentAuthPage] = useState<AuthPage>('landing');
-  const [currentPage, setCurrentPage] = useState<PageType>('dashboard');
   const [language, setLanguage] = useState<Language>('zh');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [customerInsightsTab, setCustomerInsightsTab] = useState<CustomerInsightsTab>('documents');
-  const [selectedInteractionId, setSelectedInteractionId] = useState<string | undefined>();
-  const [selectedContactId, setSelectedContactId] = useState<number | undefined>();
-  const [selectedOpportunityId, setSelectedOpportunityId] = useState<string | undefined>();
-  const [selectedTaskId, setSelectedTaskId] = useState<number | undefined>();
-  const [isNewContactModalOpen, setIsNewContactModalOpen] = useState(false);
 
   // Check authentication status on app load
   useEffect(() => {
@@ -106,23 +122,10 @@ export default function App() {
   // Authentication handlers
   const handleSignIn = () => {
     setIsAuthenticated(true);
-    setCurrentPage('dashboard');
   };
 
   const handleSignUp = () => {
     setIsAuthenticated(true);
-    setCurrentPage('dashboard');
-  };
-
-  const handleSignOut = () => {
-    authApi.logout(); // This clears tokens
-    localStorage.removeItem('user'); // Clear user data
-    setIsAuthenticated(false);
-    setCurrentAuthPage('landing');
-    setCurrentPage('dashboard');
-    setSearchQuery('');
-    setCustomerInsightsTab('overview');
-    setSelectedInteractionId(undefined);
   };
 
   const handleBackToLanding = () => {
@@ -135,138 +138,6 @@ export default function App() {
 
   const handleSignUpRedirect = () => {
     setCurrentAuthPage('signup');
-  };
-
-  // 当切换到非客户洞察页面时，重置标签页状态
-  const handlePageChange = (page: PageType) => {
-    setCurrentPage(page);
-    if (page !== 'customer-insights') {
-      setCustomerInsightsTab('overview');
-    }
-  };
-
-  const renderCurrentPage = () => {
-    switch (currentPage) {
-      case 'dashboard':
-        return <Dashboard searchQuery={searchQuery} language={language} onPageChange={handlePageChange} />;
-      case 'market-insights':
-        return <MarketInsights searchQuery={searchQuery} language={language} />;
-      case 'customer-insights':
-        return <CustomerInsights 
-          searchQuery={searchQuery} 
-          language={language} 
-          currentTab={customerInsightsTab}
-          onTabChange={setCustomerInsightsTab}
-          onNavigateToDetail={(id) => {
-            setSelectedInteractionId(id);
-            setCurrentPage('interaction-detail');
-          }}
-        />;
-      case 'opportunities':
-        return <Opportunities
-          searchQuery={searchQuery}
-          language={language}
-          onViewOpportunity={(id) => {
-            setSelectedOpportunityId(id);
-            setCurrentPage('opportunity-detail');
-          }}
-        />;
-      case 'create-opportunity':
-        return <CreateOpportunity language={language} onNavigateBack={setCurrentPage} />;
-      case 'opportunity-detail':
-        return selectedOpportunityId ? (
-          <OpportunityDetail
-            language={language}
-            opportunityId={selectedOpportunityId}
-            onNavigateBack={setCurrentPage}
-          />
-        ) : null;
-      case 'archived-opportunities':
-        return <ArchivedOpportunities
-          searchQuery={searchQuery}
-          language={language}
-          onNavigateBack={() => setCurrentPage('opportunities')}
-        />;
-      case 'interactions':
-        return <Interactions
-          searchQuery={searchQuery}
-          language={language}
-          onViewDetails={(id) => {
-            setSelectedInteractionId(id);
-            setCurrentPage('interaction-detail');
-          }}
-        />;
-      case 'archived-interactions':
-        return <ArchivedInteractions
-          searchQuery={searchQuery}
-          language={language}
-          onNavigateBack={() => setCurrentPage('interactions')}
-        />;
-      case 'create-interaction':
-        return <CreateInteraction language={language} onNavigateBack={setCurrentPage} />;
-      case 'interaction-detail':
-        return <InteractionDetail 
-          searchQuery={searchQuery} 
-          language={language} 
-          onNavigateBack={setCurrentPage}
-          interactionId={selectedInteractionId}
-        />;
-      case 'task-manager':
-        return <TaskManager
-          searchQuery={searchQuery}
-          language={language}
-          onNavigate={setCurrentPage}
-          onViewTask={(id) => {
-            setSelectedTaskId(id);
-            setCurrentPage('task-detail');
-          }}
-        />;
-      case 'archived-tasks':
-        return <ArchivedTasks
-          searchQuery={searchQuery}
-          language={language}
-          onNavigateBack={() => setCurrentPage('task-manager')}
-        />;
-      case 'task-detail':
-        return selectedTaskId ? (
-          <TaskDetail
-            language={language}
-            taskId={selectedTaskId}
-            onNavigateBack={setCurrentPage}
-          />
-        ) : null;
-      case 'create-task':
-        return <CreateTask language={language} onNavigateBack={setCurrentPage} />;
-      case 'calendar':
-        return <Calendar searchQuery={searchQuery} language={language} />;
-      case 'create-event':
-        return <CreateEvent language={language} onNavigateBack={setCurrentPage} />;
-      case 'contacts':
-        return <Contacts 
-          searchQuery={searchQuery} 
-          language={language} 
-          onNewContact={() => setCurrentPage('create-contact')}
-          onViewContact={(contactId) => {
-            setSelectedContactId(contactId);
-            setCurrentPage('contact-detail');
-          }}
-        />;
-      case 'create-contact':
-        return <CreateContact language={language} onNavigateBack={setCurrentPage} />;
-      case 'create-customer':
-        return <CreateCustomer language={language} onNavigateBack={setCurrentPage} />;
-      case 'contact-detail':
-        return <ContactDetail 
-          searchQuery={searchQuery} 
-          language={language} 
-          onNavigateBack={setCurrentPage}
-          contactId={selectedContactId}
-        />;
-      case 'settings':
-        return <Settings searchQuery={searchQuery} language={language} />;
-      default:
-        return <Dashboard searchQuery={searchQuery} language={language} />;
-    }
   };
 
   // Show loading screen while checking authentication
@@ -330,44 +201,8 @@ export default function App() {
 
   // Render main application if authenticated
   return (
-    <div className="h-screen flex bg-background">
-      <Sidebar 
-        currentPage={currentPage} 
-        onPageChange={handlePageChange}
-        language={language}
-        collapsed={sidebarCollapsed}
-        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-        onSignOut={handleSignOut}
-      />
-      <div className="flex-1 flex flex-col">
-        <Navbar
-          currentPage={currentPage}
-          language={language}
-          onLanguageChange={setLanguage}
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          onPageChange={handlePageChange}
-          customerInsightsTab={customerInsightsTab}
-          onNewCustomer={() => setCurrentPage('create-customer')}
-          onNewOpportunity={() => setCurrentPage('create-opportunity')}
-          onNewInteraction={() => setCurrentPage('create-interaction')}
-          onNewTask={() => setCurrentPage('create-task')}
-          onNewEvent={() => setCurrentPage('create-event')}
-          onNewContact={() => setCurrentPage('create-contact')}
-          onViewArchivedOpportunities={() => setCurrentPage('archived-opportunities')}
-          onViewArchivedInteractions={() => setCurrentPage('archived-interactions')}
-          onViewArchivedTasks={() => setCurrentPage('archived-tasks')}
-        />
-        <main className="flex-1 overflow-auto px-6 pb-6">
-          {renderCurrentPage()}
-        </main>
-      </div>
-      
-      <NewContactModal 
-        isOpen={isNewContactModalOpen}
-        onClose={() => setIsNewContactModalOpen(false)}
-        language={language}
-      />
-    </div>
+    <BrowserRouter>
+      <AuthenticatedApp />
+    </BrowserRouter>
   );
 }

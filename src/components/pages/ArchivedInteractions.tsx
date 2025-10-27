@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -10,7 +11,6 @@ import * as api from '../../services/api';
 interface ArchivedInteractionsProps {
   searchQuery: string;
   language: Language;
-  onNavigateBack: () => void;
 }
 
 interface Interaction {
@@ -29,9 +29,9 @@ interface Interaction {
 
 export function ArchivedInteractions({
   searchQuery,
-  language,
-  onNavigateBack
+  language
 }: ArchivedInteractionsProps) {
+  const navigate = useNavigate();
   const [interactions, setInteractions] = useState<Interaction[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -278,7 +278,7 @@ export function ArchivedInteractions({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <Button variant="outline" onClick={onNavigateBack}>
+          <Button variant="outline" onClick={() => navigate('/interactions')}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             {t.backToInteractions}
           </Button>

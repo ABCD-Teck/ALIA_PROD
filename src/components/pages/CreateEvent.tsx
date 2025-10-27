@@ -6,11 +6,12 @@ import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Save } from 'lucide-react';
-import { Language, PageType } from '../../App';
+import { useNavigate } from 'react-router-dom';
+import { Language } from '../../App';
 
 interface CreateEventProps {
   language: Language;
-  onNavigateBack: (page: PageType) => void;
+  
 }
 
 type EventType = 'meeting' | 'call' | 'task' | 'reminder';
@@ -30,7 +31,8 @@ interface EventFormData {
   notes: string;
 }
 
-export function CreateEvent({ language, onNavigateBack }: CreateEventProps) {
+export function CreateEvent({ language }: CreateEventProps) {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState<EventFormData>({
     title: '',
     description: '',
@@ -149,11 +151,11 @@ export function CreateEvent({ language, onNavigateBack }: CreateEventProps) {
     // TODO: Implement save logic
     console.log('Saving event:', formData);
     // Navigate back to calendar after saving
-    onNavigateBack('calendar');
+    navigate('/calendar');
   };
 
   const handleCancel = () => {
-    onNavigateBack('calendar');
+    navigate('/calendar');
   };
 
   return (

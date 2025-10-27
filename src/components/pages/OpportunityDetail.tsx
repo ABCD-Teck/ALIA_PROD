@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -6,13 +7,11 @@ import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { ArrowLeft, Save, Loader2, Archive } from 'lucide-react';
-import { Language, PageType } from '../../App';
+import { Language } from '../../App';
 import { opportunitiesApi, customersApi } from '../../services/api';
 
 interface OpportunityDetailProps {
   language: Language;
-  opportunityId: string;
-  onNavigateBack: (page: PageType) => void;
 }
 
 type Priority = 'High' | 'Medium' | 'Low';
@@ -84,7 +83,11 @@ const PRIORITY_MAP: Record<string, string> = {
   'low': 'low'
 };
 
-export function OpportunityDetail({ language, opportunityId, onNavigateBack }: OpportunityDetailProps) {
+export function OpportunityDetail({ language }: OpportunityDetailProps) {
+  const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+  const opportunityId = id || '';
+
   const [formData, setFormData] = useState<OpportunityFormData>({
     customer_id: '',
     name: '',
@@ -340,7 +343,7 @@ export function OpportunityDetail({ language, opportunityId, onNavigateBack }: O
         setSuccessMessage(t.successMessage);
         // Wait a moment to show success message, then navigate back
         setTimeout(() => {
-          onNavigateBack('opportunities');
+          navigate('/opportunities');
         }, 1500);
       } else {
         // More specific error handling
@@ -391,7 +394,7 @@ export function OpportunityDetail({ language, opportunityId, onNavigateBack }: O
         setSuccessMessage(t.archiveSuccess);
         // Wait a moment to show success message, then navigate back
         setTimeout(() => {
-          onNavigateBack('opportunities');
+          navigate('/opportunities');
         }, 1500);
       } else {
         const errorMsg = response.error || t.archiveError;
@@ -407,7 +410,7 @@ export function OpportunityDetail({ language, opportunityId, onNavigateBack }: O
   };
 
   const handleCancel = () => {
-    onNavigateBack('opportunities');
+    navigate('/opportunities');
   };
 
   if (isLoading) {

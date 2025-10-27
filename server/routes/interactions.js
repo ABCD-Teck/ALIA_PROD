@@ -2,6 +2,11 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db');
 const { authenticateToken } = require('../middleware/auth');
+const {
+  syncInteractionToCalendar,
+  removeInteractionCalendar,
+  shouldSyncInteraction
+} = require('../services/calendar-sync');
 
 // GET all interactions
 router.get('/', authenticateToken, async (req, res) => {
@@ -281,8 +286,25 @@ router.post('/', authenticateToken, async (req, res) => {
     ];
 
     const result = await pool.query(query, values);
+    const interaction = result.rows[0];
 
-    res.status(201).json(result.rows[0]);
+    let calendarSync = { skipped: true, reason: 'Does not meet sync criteria' };
+    try {
+      if (shouldSyncInteraction(interaction)) {
+        calendarSync = await syncInteractionToCalendar(interaction, req.user.user_id);
+      }
+    } catch (syncError) {
+      console.error('Calendar sync failed after interaction create:', syncError);
+      calendarSync = {
+        success: false,
+        error: syncError.message
+      };
+    }
+
+    res.status(201).json({
+      ...interaction,
+      calendar_sync: calendarSync
+    });
   } catch (error) {
     console.error('Error creating interaction:', error);
     console.error('Error details:', {
@@ -375,7 +397,28 @@ router.put('/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Interaction not found' });
     }
 
-    res.json(result.rows[0]);
+    const interaction = result.rows[0];
+
+    let calendarSync = null;
+    try {
+      if (shouldSyncInteraction(interaction)) {
+        calendarSync = await syncInteractionToCalendar(interaction, req.user.user_id);
+      } else {
+        const removalReason = interaction.archived ? 'archived' : 'unscheduled';
+        calendarSync = await removeInteractionCalendar(interaction.interaction_id, req.user.user_id, removalReason);
+      }
+    } catch (syncError) {
+      console.error('Calendar sync failed after interaction update:', syncError);
+      calendarSync = {
+        success: false,
+        error: syncError.message
+      };
+    }
+
+    res.json({
+      ...interaction,
+      calendar_sync: calendarSync
+    });
   } catch (error) {
     console.error('Error updating interaction:', error);
     console.error('Error details:', {
@@ -524,7 +567,22 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 
     const result = await pool.query(query, [id]);
 
-    res.json({ message: 'Interaction deleted permanently', interaction: result.rows[0] });
+    let calendarSync = null;
+    try {
+      calendarSync = await removeInteractionCalendar(id, req.user.user_id, 'deleted');
+    } catch (syncError) {
+      console.error('Calendar sync failed after interaction delete:', syncError);
+      calendarSync = {
+        success: false,
+        error: syncError.message
+      };
+    }
+
+    res.json({
+      message: 'Interaction deleted permanently',
+      interaction: result.rows[0],
+      calendar_sync: calendarSync
+    });
   } catch (error) {
     console.error('Error deleting interaction:', error);
     res.status(500).json({ error: 'Failed to delete interaction', message: error.message });

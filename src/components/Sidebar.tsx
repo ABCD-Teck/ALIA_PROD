@@ -1,25 +1,24 @@
 import React from 'react';
-import { 
-  BarChart3, 
-  TrendingUp, 
-  Users, 
-  Target, 
-  MessageSquare, 
-  CheckSquare, 
-  Calendar as CalendarIcon, 
-  Phone, 
-  Settings as SettingsIcon, 
+import { useNavigate, useLocation } from 'react-router-dom';
+import {
+  BarChart3,
+  TrendingUp,
+  Users,
+  Target,
+  MessageSquare,
+  CheckSquare,
+  Calendar as CalendarIcon,
+  Phone,
+  Settings as SettingsIcon,
   LogOut,
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Separator } from './ui/separator';
-import { PageType, Language } from '../App';
+import { Language } from '../App';
 
 interface SidebarProps {
-  currentPage: PageType;
-  onPageChange: (page: PageType) => void;
   language: Language;
   collapsed: boolean;
   onToggleCollapse: () => void;
@@ -28,32 +27,41 @@ interface SidebarProps {
 
 const menuItems = {
   zh: [
-    { id: 'dashboard' as PageType, icon: BarChart3, label: '主页' },
-    { id: 'market-insights' as PageType, icon: TrendingUp, label: '市场洞察' },
-    { id: 'customer-insights' as PageType, icon: Users, label: '客户洞察' },
-    { id: 'opportunities' as PageType, icon: Target, label: '商机管理' },
-    { id: 'interactions' as PageType, icon: MessageSquare, label: '客户互动' },
-    { id: 'task-manager' as PageType, icon: CheckSquare, label: '任务管理' },
-    { id: 'calendar' as PageType, icon: CalendarIcon, label: '日程安排' },
-    { id: 'contacts' as PageType, icon: Phone, label: '联系人' },
-    { id: 'settings' as PageType, icon: SettingsIcon, label: '设置' },
+    { path: '/', icon: BarChart3, label: '主页' },
+    { path: '/market-insights', icon: TrendingUp, label: '市场洞察' },
+    { path: '/customer-insights', icon: Users, label: '客户洞察' },
+    { path: '/opportunities', icon: Target, label: '商机管理' },
+    { path: '/interactions', icon: MessageSquare, label: '客户互动' },
+    { path: '/tasks', icon: CheckSquare, label: '任务管理' },
+    { path: '/calendar', icon: CalendarIcon, label: '日程安排' },
+    { path: '/contacts', icon: Phone, label: '联系人' },
+    { path: '/settings', icon: SettingsIcon, label: '设置' },
   ],
   en: [
-    { id: 'dashboard' as PageType, icon: BarChart3, label: 'Dashboard' },
-    { id: 'market-insights' as PageType, icon: TrendingUp, label: 'Market Insights' },
-    { id: 'customer-insights' as PageType, icon: Users, label: 'Customer Insights' },
-    { id: 'opportunities' as PageType, icon: Target, label: 'Opportunities' },
-    { id: 'interactions' as PageType, icon: MessageSquare, label: 'Customer Interactions' },
-    { id: 'task-manager' as PageType, icon: CheckSquare, label: 'Task Manager' },
-    { id: 'calendar' as PageType, icon: CalendarIcon, label: 'Calendar' },
-    { id: 'contacts' as PageType, icon: Phone, label: 'Contacts' },
-    { id: 'settings' as PageType, icon: SettingsIcon, label: 'Settings' },
+    { path: '/', icon: BarChart3, label: 'Dashboard' },
+    { path: '/market-insights', icon: TrendingUp, label: 'Market Insights' },
+    { path: '/customer-insights', icon: Users, label: 'Customer Insights' },
+    { path: '/opportunities', icon: Target, label: 'Opportunities' },
+    { path: '/interactions', icon: MessageSquare, label: 'Customer Interactions' },
+    { path: '/tasks', icon: CheckSquare, label: 'Task Manager' },
+    { path: '/calendar', icon: CalendarIcon, label: 'Calendar' },
+    { path: '/contacts', icon: Phone, label: 'Contacts' },
+    { path: '/settings', icon: SettingsIcon, label: 'Settings' },
   ]
 };
 
-export function Sidebar({ currentPage, onPageChange, language, collapsed, onToggleCollapse, onSignOut }: SidebarProps) {
+export function Sidebar({ language, collapsed, onToggleCollapse, onSignOut }: SidebarProps) {
+  const navigate = useNavigate();
+  const location = useLocation();
   const items = menuItems[language];
-  
+
+  const isActive = (path: string) => {
+    if (path === '/') {
+      return location.pathname === '/';
+    }
+    return location.pathname.startsWith(path);
+  };
+
   return (
     <div className={`${collapsed ? 'w-16' : 'w-64'} bg-sidebar border-r border-sidebar-border flex flex-col transition-all duration-300 relative`}>
       {/* Toggle button */}
@@ -80,33 +88,33 @@ export function Sidebar({ currentPage, onPageChange, language, collapsed, onTogg
           </div>
         )}
       </div>
-      
+
       {/* Navigation */}
       <nav className={`flex-1 ${collapsed ? 'px-2' : 'px-6'} space-y-1`}>
         {items.map((item) => {
           const Icon = item.icon;
-          const isActive = currentPage === item.id;
-          
+          const itemIsActive = isActive(item.path);
+
           return (
-            <div key={item.id} className="relative group">
+            <div key={item.path} className="relative group">
               <Button
                 variant="ghost"
                 className={`w-full ${collapsed ? 'justify-center px-0' : 'justify-start'} h-10 transition-all duration-200 ${
-                  isActive 
-                    ? 'hover:opacity-80' 
+                  itemIsActive
+                    ? 'hover:opacity-80'
                     : 'hover:bg-gray-100'
                 }`}
-                style={isActive ? { 
-                  backgroundColor: 'rgba(204, 255, 255, 0.6)', 
-                  color: '#636060', 
-                  borderRadius: '10px' 
+                style={itemIsActive ? {
+                  backgroundColor: 'rgba(204, 255, 255, 0.6)',
+                  color: '#636060',
+                  borderRadius: '10px'
                 } : { color: '#636060' }}
-                onClick={() => onPageChange(item.id)}
+                onClick={() => navigate(item.path)}
               >
                 <Icon className={`h-4 w-4 ${!collapsed ? 'mr-3' : ''}`} />
                 {!collapsed && <span className="sidebar-menu-text">{item.label}</span>}
               </Button>
-              
+
               {/* Tooltip for collapsed state */}
               {collapsed && (
                 <div className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-sm rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-20 whitespace-nowrap pointer-events-none">

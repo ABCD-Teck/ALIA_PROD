@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -10,7 +11,6 @@ import * as api from '../../services/api';
 interface ArchivedTasksProps {
   searchQuery: string;
   language: Language;
-  onNavigateBack: () => void;
 }
 
 interface Task {
@@ -27,9 +27,9 @@ interface Task {
 
 export function ArchivedTasks({
   searchQuery,
-  language,
-  onNavigateBack
+  language
 }: ArchivedTasksProps) {
+  const navigate = useNavigate();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -238,7 +238,7 @@ export function ArchivedTasks({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <Button variant="outline" onClick={onNavigateBack}>
+          <Button variant="outline" onClick={() => navigate('/tasks')}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             {t.backToTasks}
           </Button>

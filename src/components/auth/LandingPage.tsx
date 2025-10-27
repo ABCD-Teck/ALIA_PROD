@@ -6,9 +6,9 @@ import { Language } from '../../App';
 
 interface LandingPageProps {
   language: Language;
-  onSignUp: () => void;
-  onSignIn: () => void;
   onLanguageChange: (language: Language) => void;
+  onSignIn: () => void;
+  onSignUp: () => void;
 }
 
 function Heading1({ language }: { language: Language }) {
@@ -190,11 +190,11 @@ function Container5({ language, onSignIn, onSignUp }: { language: Language; onSi
   );
 }
 
-export const LandingPage: React.FC<LandingPageProps> = ({ 
-  language, 
-  onSignUp, 
-  onSignIn, 
-  onLanguageChange 
+export const LandingPage: React.FC<LandingPageProps> = ({
+  language,
+  onLanguageChange,
+  onSignIn,
+  onSignUp
 }) => {
   return (
     <div className="min-h-screen" style={{ backgroundImage: "linear-gradient(142.961deg, rgb(249, 250, 251) 0%, rgb(243, 244, 246) 100%), linear-gradient(90deg, rgb(255, 255, 255) 0%, rgb(255, 255, 255) 100%)" }}>

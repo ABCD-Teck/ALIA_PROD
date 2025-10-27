@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -18,9 +19,6 @@ import * as api from '../../services/api';
 interface CustomerInsightsProps {
   searchQuery: string;
   language: Language;
-  currentTab: CustomerInsightsTab;
-  onTabChange: (tab: CustomerInsightsTab) => void;
-  onNavigateToDetail?: (interactionId: string) => void;
 }
 
 const companies: Array<any> = [];
@@ -41,7 +39,13 @@ const COUNTRY_LABELS: Record<string, { zh: string; en: string }> = {
   other: { zh: '其他', en: 'Other' }
 };
 
-export function CustomerInsights({ searchQuery, language, currentTab, onTabChange, onNavigateToDetail }: CustomerInsightsProps) {
+export function CustomerInsights({ searchQuery, language }: CustomerInsightsProps) {
+  const navigate = useNavigate();
+  const { customerId: urlCustomerId, tab: urlTab } = useParams<{ customerId?: string; tab?: string }>();
+
+  // Get current tab from URL, default to 'overview'
+  const currentTab = (urlTab as CustomerInsightsTab) || 'overview';
+
   const [selectedCompany, setSelectedCompany] = useState('');
   const [isAnnotationDialogOpen, setIsAnnotationDialogOpen] = useState(false);
   const [newAnnotation, setNewAnnotation] = useState({ title: '', status: '', author: '' });
@@ -589,20 +593,25 @@ export function CustomerInsights({ searchQuery, language, currentTab, onTabChang
     fetchCustomers();
   }, []);
 
+  // Set selectedCustomerId from URL param when navigating from Dashboard or set default
   useEffect(() => {
-    if (dbCustomers.length === 0) {
-      return;
+    // Priority 1: If URL param is provided, use it
+    if (urlCustomerId) {
+      const customerId = parseInt(urlCustomerId, 10);
+      if (!isNaN(customerId)) {
+        setSelectedCustomerId(customerId);
+        setSelectedCompany(`db_${customerId}`);
+        return;
+      }
     }
 
-    const firstCustomer = dbCustomers[0];
-    if (!selectedCustomerId) {
+    // Priority 2: Set default customer only if none selected and customers are loaded
+    if (dbCustomers.length > 0 && !selectedCustomerId) {
+      const firstCustomer = dbCustomers[0];
       setSelectedCustomerId(firstCustomer.customer_id);
-    }
-
-    if (!selectedCompany) {
       setSelectedCompany(`db_${firstCustomer.customer_id}`);
     }
-  }, [dbCustomers, selectedCustomerId, selectedCompany]);
+  }, [urlCustomerId, dbCustomers, selectedCustomerId]);
 
   // 过滤搜索结果
   // Filter all companies (mock + database) based on search
@@ -1314,7 +1323,12 @@ const allCompaniesForDropdown = [
 
       {/* Tabs container with fixed tabs and scrollable content */}
       <div className="flex-1 flex flex-col">
-        <Tabs value={currentTab} onValueChange={(value) => onTabChange(value as CustomerInsightsTab)} className="h-full flex flex-col">
+        <Tabs value={currentTab} onValueChange={(value) => {
+          const newTab = value as CustomerInsightsTab;
+          if (selectedCustomerId) {
+            navigate(`/customer-insights/${selectedCustomerId}/${newTab}`);
+          }
+        }} className="h-full flex flex-col">
           {/* Fixed tabs */}
           <TabsList className="grid w-full grid-cols-5 flex-shrink-0">
             <TabsTrigger value="overview">{t.overview}</TabsTrigger>
@@ -1889,7 +1903,11 @@ const allCompaniesForDropdown = [
                       ))}
                     </div>
                     <div className="mt-6 text-center">
-                      <Button variant="outline" onClick={() => onTabChange('news')}>
+                      <Button variant="outline" onClick={() => {
+                        if (selectedCustomerId) {
+                          navigate(`/customer-insights/${selectedCustomerId}/news`);
+                        }
+                      }}>
                         {t.viewAllNews}
                       </Button>
                     </div>

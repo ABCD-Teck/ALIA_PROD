@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -11,19 +12,14 @@ import { authApi } from '../../services/api';
 
 interface SignUpPageProps {
   language: Language;
-  onSignUp: () => void;
-  onBackToLanding: () => void;
-  onSignIn: () => void;
   onLanguageChange: (language: Language) => void;
 }
 
-export const SignUpPage: React.FC<SignUpPageProps> = ({ 
-  language, 
-  onSignUp, 
-  onBackToLanding, 
-  onSignIn,
-  onLanguageChange 
+export const SignUpPage: React.FC<SignUpPageProps> = ({
+  language,
+  onLanguageChange
 }) => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -127,8 +123,8 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
       } else if (response.data) {
         // Store user data in localStorage
         localStorage.setItem('user', JSON.stringify(response.data.user));
-        // Call onSignUp to transition to the main app
-        onSignUp();
+        // Navigate to the dashboard
+        navigate('/');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
@@ -145,9 +141,9 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="flex justify-between items-center p-6 bg-white border-b border-gray-200">
-        <Button 
-          variant="ghost" 
-          onClick={onBackToLanding}
+        <Button
+          variant="ghost"
+          onClick={() => navigate('/')}
           className="text-gray-600 hover:text-gray-900 flex items-center gap-2"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -341,9 +337,9 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
             <div className="mt-8 text-center">
               <p className="text-sm text-gray-600">
                 {content.haveAccount}{' '}
-                <Button 
-                  variant="link" 
-                  onClick={onSignIn}
+                <Button
+                  variant="link"
+                  onClick={() => navigate('/signin')}
                   className="text-[#009699] hover:text-[#007d80] p-0 h-auto font-medium"
                 >
                   {content.signIn}

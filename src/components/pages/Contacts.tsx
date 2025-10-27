@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
@@ -9,8 +10,6 @@ import { contactsApi } from '../../services/api';
 interface ContactsProps {
   searchQuery: string;
   language: Language;
-  onNewContact?: () => void;
-  onViewContact?: (contactId: number) => void;
 }
 
 interface Contact {
@@ -24,7 +23,8 @@ interface Contact {
   department?: string;
 }
 
-export function Contacts({ searchQuery, language, onNewContact, onViewContact }: ContactsProps) {
+export function Contacts({ searchQuery, language }: ContactsProps) {
+  const navigate = useNavigate();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [totalContacts, setTotalContacts] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
@@ -173,7 +173,7 @@ export function Contacts({ searchQuery, language, onNewContact, onViewContact }:
           </Button>
           <Button
             className="bg-[#009699] text-white hover:bg-[#007a7d]"
-            onClick={onNewContact}
+            onClick={() => navigate('/contacts/create')}
           >
             {t.createNew}
           </Button>
@@ -243,7 +243,7 @@ export function Contacts({ searchQuery, language, onNewContact, onViewContact }:
                         size="sm"
                         className="h-8 w-8 p-0 hover:bg-green-50"
                         title={language === 'zh' ? '查看详情' : 'View Details'}
-                        onClick={() => onViewContact?.(parseInt(contact.contact_id))}
+                        onClick={() => navigate(`/contacts/${contact.contact_id}`)}
                       >
                         <Eye className="h-4 w-4 text-gray-500 hover:text-green-600" />
                       </Button>

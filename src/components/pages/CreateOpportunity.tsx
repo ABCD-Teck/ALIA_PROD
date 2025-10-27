@@ -6,12 +6,13 @@ import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { ArrowLeft, Save, Loader2 } from 'lucide-react';
-import { Language, PageType } from '../../App';
+import { useNavigate } from 'react-router-dom';
+import { Language } from '../../App';
 import { opportunitiesApi, customersApi } from '../../services/api';
 
 interface CreateOpportunityProps {
   language: Language;
-  onNavigateBack: (page: PageType) => void;
+  
 }
 
 type Priority = 'High' | 'Medium' | 'Low';
@@ -57,7 +58,8 @@ const STAGE_MAP: Record<string, string> = {
   'Lost': 'closed_lost'
 };
 
-export function CreateOpportunity({ language, onNavigateBack }: CreateOpportunityProps) {
+export function CreateOpportunity({ language }: CreateOpportunityProps) {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState<OpportunityFormData>({
     customer_id: '',
     name: '',
@@ -247,7 +249,7 @@ export function CreateOpportunity({ language, onNavigateBack }: CreateOpportunit
         setSuccessMessage(t.successMessage);
         // Wait a moment to show success message, then navigate back
         setTimeout(() => {
-          onNavigateBack('opportunities');
+          navigate('/opportunities');
         }, 1500);
       } else {
         const errorMsg = response.error || t.errorMessage;
@@ -264,7 +266,7 @@ export function CreateOpportunity({ language, onNavigateBack }: CreateOpportunit
   };
 
   const handleCancel = () => {
-    onNavigateBack('opportunities');
+    navigate('/opportunities');
   };
 
   return (
