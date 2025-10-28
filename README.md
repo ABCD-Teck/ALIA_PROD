@@ -29,7 +29,7 @@ Alia is an intelligent CRM platform that unifies customer relationship managemen
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/CHENn3bula/Alia_Web.git
+   git clone https://github.com/ABCD-TECK/ALIA_PROB.git
    cd Alia_Web
    ```
 
