@@ -5,6 +5,7 @@ import { Button } from '../ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { ChevronLeft, ChevronRight, Clock, MapPin, User, Building } from 'lucide-react';
 import { Language } from '../../App';
+import { calendarApi } from '../../services/api';
 
 interface CalendarProps {
   searchQuery: string;
@@ -129,26 +130,23 @@ export function Calendar({ searchQuery, language }: CalendarProps) {
   };
 
   const fetchEvents = async () => {
+    setLoading(true);
+
     try {
-      setLoading(true);
       const { start, end } = getDateRange();
-      const token = localStorage.getItem('accessToken');
+      const { data, error } = await calendarApi.getEvents({
+        start,
+        end,
+        view: viewType,
+      });
 
-      const response = await fetch(
-        `http://localhost:3001/api/calendar/events?start=${start}&end=${end}&view=${viewType}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch events');
+      if (error) {
+        console.error('Error fetching events:', error);
+        setEvents([]);
+        return;
       }
 
-      const data = await response.json();
-      setEvents(data.events || []);
+      setEvents(data?.events || []);
     } catch (error) {
       console.error('Error fetching events:', error);
       setEvents([]);

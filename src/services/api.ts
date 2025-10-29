@@ -286,6 +286,21 @@ export const opportunitiesApi = {
   },
 };
 
+// Calendar API
+export const calendarApi = {
+  getEvents: async (params: { start: string; end: string; view?: string }) => {
+    const queryParams = new URLSearchParams();
+    queryParams.append('start', params.start);
+    queryParams.append('end', params.end);
+    if (params.view) queryParams.append('view', params.view);
+
+    const query = queryParams.toString();
+    return fetchApi<{ events: any[] }>(
+      `/calendar/events${query ? `?${query}` : ''}`
+    );
+  },
+};
+
 // Interactions API
 export const interactionsApi = {
   getAll: async (params?: { search?: string; limit?: number; offset?: number }) => {
