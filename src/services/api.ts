@@ -528,6 +528,58 @@ export const financialStatementsApi = {
       statements: any[];
     }>(`/financial-statements/customer/${customerId}`);
   },
+
+  getById: async (id: string) => {
+    return fetchApi<{
+      statement: any;
+    }>(`/financial-statements/${id}`);
+  },
+
+  create: async (data: {
+    customer_id: string;
+    fiscal_year: string;
+    revenue?: number;
+    net_profit?: number;
+    roe?: number;
+    debt_ratio?: number;
+    currency_id?: string;
+    notes?: string;
+  }) => {
+    return fetchApi<{
+      statement: any;
+      message: string;
+    }>('/financial-statements', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  update: async (id: string, data: {
+    fiscal_year?: string;
+    revenue?: number;
+    net_profit?: number;
+    roe?: number;
+    debt_ratio?: number;
+    currency_id?: string;
+    notes?: string;
+  }) => {
+    return fetchApi<{
+      statement: any;
+      message: string;
+    }>(`/financial-statements/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  delete: async (id: string) => {
+    return fetchApi<{
+      message: string;
+      financial_statement_id: string;
+    }>(`/financial-statements/${id}`, {
+      method: 'DELETE',
+    });
+  },
 };
 
 // Authentication API
