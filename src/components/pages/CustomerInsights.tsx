@@ -1796,14 +1796,16 @@ const allCompaniesForDropdown = [
 
             {/* 财务年度数据 */}
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>{t.financialAnnualData}</CardTitle>
-                {selectedCustomerId && (
-                  <Button onClick={handleAddFinancialStatement} size="sm">
-                    <Plus className="mr-2 h-4 w-4" />
-                    {t.addFinancialStatement}
-                  </Button>
-                )}
+              <CardHeader>
+                <div className="flex items-center justify-between flex-wrap gap-4">
+                  <CardTitle>{t.financialAnnualData}</CardTitle>
+                  {selectedCustomerId && (
+                    <Button onClick={handleAddFinancialStatement} size="sm" className="gap-2">
+                      <Plus className="h-4 w-4" />
+                      {t.addFinancialStatement}
+                    </Button>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 {loadingFinancials ? (
@@ -1816,7 +1818,25 @@ const allCompaniesForDropdown = [
                       : ''}
                   </div>
                 ) : !hasFinancialData ? (
-                  <div className="text-sm text-muted-foreground">{t.noFinancialData}</div>
+                  <div className="flex flex-col items-center justify-center py-12 px-4">
+                    <div className="rounded-full bg-muted p-3 mb-4">
+                      <TrendingUp className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                    <h3 className="text-lg font-medium mb-2">
+                      {language === 'zh' ? '暂无财务数据' : 'No financial data yet'}
+                    </h3>
+                    <p className="text-sm text-muted-foreground text-center mb-6 max-w-sm">
+                      {language === 'zh'
+                        ? '开始添加财务信息，跟踪客户的财务表现和关键指标。'
+                        : 'Start adding financial information to track customer financial performance and key metrics.'}
+                    </p>
+                    {selectedCustomerId && (
+                      <Button onClick={handleAddFinancialStatement} size="lg" className="gap-2">
+                        <Plus className="h-5 w-5" />
+                        {t.addFinancialStatement}
+                      </Button>
+                    )}
+                  </div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full">
