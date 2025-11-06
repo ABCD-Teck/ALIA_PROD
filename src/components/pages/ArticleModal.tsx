@@ -141,24 +141,19 @@ export function ArticleModal({ isOpen, onClose, articleId, language }: ArticleMo
   if (!isOpen) return null;
 
   return (
-    <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent side="right" className="w-full sm:w-[600px] md:w-[800px] lg:w-[900px] p-0 gap-0">
-        <div className="flex flex-col h-full">
-          {/* Fixed Header */}
-          <div className="flex-shrink-0 px-6 pt-6 pb-4 border-b border-gray-200">
-            <SheetHeader>
-              <SheetTitle className="text-xl font-bold pr-8">
-                {loading ? t.loading : (
-                  language === 'zh' && article?.title_zh && article?.title_zh.trim() && article?.title_zh !== article?.title_en
-                    ? article?.title_zh
-                    : article?.title_en
-                )}
-              </SheetTitle>
-            </SheetHeader>
-          </div>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+        <DialogHeader className="flex-shrink-0">
+          <DialogTitle className="text-xl font-bold pr-8">
+            {loading ? t.loading : (
+              language === 'zh' && article?.title_zh && article?.title_zh.trim() && article?.title_zh !== article?.title_en
+                ? article?.title_zh
+                : article?.title_en
+            )}
+          </DialogTitle>
+        </DialogHeader>
 
-          {/* Scrollable Content */}
-          <div className="flex-1 overflow-y-auto px-6">
+        <div className="flex-1 overflow-y-auto min-h-0">
           {loading && (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-teal-custom" />
@@ -167,14 +162,14 @@ export function ArticleModal({ isOpen, onClose, articleId, language }: ArticleMo
           )}
 
           {error && (
-            <div className="py-6 text-red-600 text-center">
+            <div className="p-6 text-red-600 text-center">
               <p className="font-semibold">{t.error}</p>
               <p className="text-sm">{error}</p>
             </div>
           )}
 
           {article && !loading && (
-            <div className="space-y-6 py-6">
+            <div className="space-y-6 pb-4">
             {/* Article Title - Translated */}
             <div>
               <h1 className="text-2xl font-bold text-gray-900 mb-4">
@@ -318,9 +313,8 @@ export function ArticleModal({ isOpen, onClose, articleId, language }: ArticleMo
             </div>
           </div>
           )}
-          </div>
         </div>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -15,6 +15,7 @@ import { Building2, Plus, TrendingUp, TrendingDown, Calendar, User, ExternalLink
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Language, CustomerInsightsTab } from '../../App';
 import * as api from '../../services/api';
+import { CURRENCIES } from '../../contexts/CurrencyContext';
 
 interface CustomerInsightsProps {
   searchQuery: string;
@@ -88,6 +89,24 @@ export function CustomerInsights({ searchQuery, language }: CustomerInsightsProp
   // Interaction detail dialog state
   const [selectedInteraction, setSelectedInteraction] = useState<any | null>(null);
   const [isInteractionDetailOpen, setIsInteractionDetailOpen] = useState(false);
+
+  // Financial statement dialog state
+  const [isFinancialDialogOpen, setIsFinancialDialogOpen] = useState(false);
+  const [editingFinancial, setEditingFinancial] = useState<any | null>(null);
+  const [financialFormData, setFinancialFormData] = useState<any>({
+    fiscal_year: '',
+    revenue: '',
+    net_profit: '',
+    roe: '',
+    debt_ratio: '',
+    currency_id: '',
+    notes: ''
+  });
+  const [savingFinancial, setSavingFinancial] = useState(false);
+  const [financialFormError, setFinancialFormError] = useState<string | null>(null);
+  const [currencies, setCurrencies] = useState<any[]>([]);
+  const [deleteFinancialDialogOpen, setDeleteFinancialDialogOpen] = useState(false);
+  const [financialToDelete, setFinancialToDelete] = useState<any | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -206,7 +225,19 @@ export function CustomerInsights({ searchQuery, language }: CustomerInsightsProp
       interactionDate: '互动日期',
       interactionSubject: '主题',
       interactionDescription: '详细描述',
-      close: '关闭'
+      close: '关闭',
+      addFinancialStatement: '添加财务信息',
+      editFinancialStatement: '编辑财务信息',
+      fiscalYear: '财年',
+      currency: '货币',
+      notesOptional: '备注（可选）',
+      fiscalYearRequired: '请输入财年',
+      actions: '操作',
+      edit: '编辑',
+      deleteFinancialTitle: '确认删除财务信息',
+      deleteFinancialDescription: '您确定要删除 {year} 年的财务信息吗？此操作无法撤销。',
+      deleting: '删除中...',
+      saving: '保存中...'
     },
     en: {
       title: 'Customer Insights',
@@ -297,7 +328,19 @@ export function CustomerInsights({ searchQuery, language }: CustomerInsightsProp
       interactionDate: 'Interaction Date',
       interactionSubject: 'Subject',
       interactionDescription: 'Description',
-      close: 'Close'
+      close: 'Close',
+      addFinancialStatement: 'Add Financial Statement',
+      editFinancialStatement: 'Edit Financial Statement',
+      fiscalYear: 'Fiscal Year',
+      currency: 'Currency',
+      notesOptional: 'Notes (Optional)',
+      fiscalYearRequired: 'Please enter fiscal year',
+      actions: 'Actions',
+      edit: 'Edit',
+      deleteFinancialTitle: 'Confirm Delete Financial Statement',
+      deleteFinancialDescription: 'Are you sure you want to delete the financial statement for {year}? This action cannot be undone.',
+      deleting: 'Deleting...',
+      saving: 'Saving...'
     }
   };
 
@@ -566,6 +609,17 @@ export function CustomerInsights({ searchQuery, language }: CustomerInsightsProp
       isActive = false;
     };
   }, [selectedCustomerId]);
+
+  // Load currencies from context
+  useEffect(() => {
+    const currenciesArray = Object.values(CURRENCIES).map((curr, idx) => ({
+      currency_id: curr.code,
+      code: curr.code,
+      symbol: curr.symbol,
+      name: curr.name
+    }));
+    setCurrencies(currenciesArray);
+  }, []);
 
   // Fetch all customers from database
   useEffect(() => {
@@ -853,6 +907,7 @@ const allCompaniesForDropdown = [
     };
 
     const annualData = sortedStatements.map((statement) => ({
+      financial_statement_id: statement.financial_statement_id,
       year: statement.fiscal_year,
       revenue: formatCurrencyDisplay(statement.revenue),
       profit: formatCurrencyDisplay(statement.net_profit),
@@ -1067,6 +1122,126 @@ const allCompaniesForDropdown = [
         ...prev,
         author: prev.author || defaultAnnotationAuthor,
       }));
+    }
+  };
+
+  // Financial statement handlers
+  const handleAddFinancialStatement = () => {
+    setEditingFinancial(null);
+    setFinancialFormData({
+      fiscal_year: '',
+      revenue: '',
+      net_profit: '',
+      roe: '',
+      debt_ratio: '',
+      currency_id: '',
+      notes: ''
+    });
+    setFinancialFormError(null);
+    setIsFinancialDialogOpen(true);
+  };
+
+  const handleEditFinancialStatement = (statement: any) => {
+    setEditingFinancial(statement);
+    setFinancialFormData({
+      fiscal_year: statement.fiscal_year || '',
+      revenue: statement.revenue || '',
+      net_profit: statement.net_profit || '',
+      roe: statement.roe || '',
+      debt_ratio: statement.debt_ratio || '',
+      currency_id: statement.currency_id || '',
+      notes: statement.notes || ''
+    });
+    setFinancialFormError(null);
+    setIsFinancialDialogOpen(true);
+  };
+
+  const handleSaveFinancialStatement = async () => {
+    if (!selectedCustomerId) {
+      setFinancialFormError(language === 'zh' ? '请先选择客户' : 'Please select a customer');
+      return;
+    }
+
+    if (!financialFormData.fiscal_year.trim()) {
+      setFinancialFormError(t.fiscalYearRequired);
+      return;
+    }
+
+    setSavingFinancial(true);
+    setFinancialFormError(null);
+
+    try {
+      const data = {
+        customer_id: selectedCustomerId.toString(),
+        fiscal_year: financialFormData.fiscal_year.trim(),
+        revenue: financialFormData.revenue ? parseFloat(financialFormData.revenue) : undefined,
+        net_profit: financialFormData.net_profit ? parseFloat(financialFormData.net_profit) : undefined,
+        roe: financialFormData.roe ? parseFloat(financialFormData.roe) : undefined,
+        debt_ratio: financialFormData.debt_ratio ? parseFloat(financialFormData.debt_ratio) : undefined,
+        currency_id: financialFormData.currency_id || undefined,
+        notes: financialFormData.notes.trim() || undefined,
+      };
+
+      if (editingFinancial) {
+        // Update existing
+        const { customer_id, ...updateData } = data;
+        await api.financialStatementsApi.update(editingFinancial.financial_statement_id, updateData);
+      } else {
+        // Create new
+        await api.financialStatementsApi.create(data);
+      }
+
+      // Refresh financial statements
+      const response = await api.financialStatementsApi.getByCustomerId(selectedCustomerId.toString());
+      if (response.data?.statements) {
+        setFinancialStatements(response.data.statements);
+      }
+
+      setIsFinancialDialogOpen(false);
+      setEditingFinancial(null);
+    } catch (error: any) {
+      console.error('Error saving financial statement:', error);
+      setFinancialFormError(error.message || (language === 'zh' ? '保存失败，请稍后重试' : 'Failed to save, please try again'));
+    } finally {
+      setSavingFinancial(false);
+    }
+  };
+
+  const handleDeleteFinancialStatement = async () => {
+    if (!financialToDelete) return;
+
+    try {
+      await api.financialStatementsApi.delete(financialToDelete.financial_statement_id);
+
+      // Refresh financial statements
+      if (selectedCustomerId) {
+        const response = await api.financialStatementsApi.getByCustomerId(selectedCustomerId.toString());
+        if (response.data?.statements) {
+          setFinancialStatements(response.data.statements);
+        }
+      }
+
+      setDeleteFinancialDialogOpen(false);
+      setFinancialToDelete(null);
+    } catch (error) {
+      console.error('Error deleting financial statement:', error);
+    }
+  };
+
+  const handleFinancialDialogChange = (open: boolean) => {
+    setIsFinancialDialogOpen(open);
+    if (!open) {
+      setEditingFinancial(null);
+      setFinancialFormError(null);
+      setFinancialFormData({
+        fiscal_year: '',
+        revenue: '',
+        net_profit: '',
+        roe: '',
+        debt_ratio: '',
+        currency_id: '',
+        notes: ''
+      });
     }
   };
 
@@ -1621,8 +1796,14 @@ const allCompaniesForDropdown = [
 
             {/* 财务年度数据 */}
             <Card>
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>{t.financialAnnualData}</CardTitle>
+                {selectedCustomerId && (
+                  <Button onClick={handleAddFinancialStatement} size="sm">
+                    <Plus className="mr-2 h-4 w-4" />
+                    {t.addFinancialStatement}
+                  </Button>
+                )}
               </CardHeader>
               <CardContent>
                 {loadingFinancials ? (
@@ -1646,6 +1827,9 @@ const allCompaniesForDropdown = [
                           <th className="text-left py-3 px-4 font-medium text-gray-600">{t.profit}</th>
                           <th className="text-left py-3 px-4 font-medium text-gray-600">ROE</th>
                           <th className="text-left py-3 px-4 font-medium text-gray-600">{t.debtRatio}</th>
+                          {selectedCustomerId && (
+                            <th className="text-left py-3 px-4 font-medium text-gray-600">{t.actions}</th>
+                          )}
                         </tr>
                       </thead>
                       <tbody>
@@ -1659,6 +1843,43 @@ const allCompaniesForDropdown = [
                               <td className="py-3 px-4 text-black">{item.profit ?? '—'}</td>
                               <td className="py-3 px-4 text-black">{item.roe ?? '—'}</td>
                               <td className="py-3 px-4 text-black">{item.debtRatio ?? '—'}</td>
+                              {selectedCustomerId && item.financial_statement_id && (
+                                <td className="py-3 px-4">
+                                  <div className="flex gap-2">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => {
+                                        // Find the original statement from financialStatements
+                                        const originalStatement = financialStatements.find(
+                                          s => s.financial_statement_id === item.financial_statement_id
+                                        );
+                                        if (originalStatement) {
+                                          handleEditFinancialStatement(originalStatement);
+                                        }
+                                      }}
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => {
+                                        // Find the original statement from financialStatements
+                                        const originalStatement = financialStatements.find(
+                                          s => s.financial_statement_id === item.financial_statement_id
+                                        );
+                                        if (originalStatement) {
+                                          setFinancialToDelete(originalStatement);
+                                          setDeleteFinancialDialogOpen(true);
+                                        }
+                                      }}
+                                    >
+                                      <Trash2 className="h-4 w-4 text-red-500" />
+                                    </Button>
+                                  </div>
+                                </td>
+                              )}
                             </tr>
                           );
                         })}
@@ -2432,6 +2653,149 @@ const allCompaniesForDropdown = [
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Financial Statement Dialog */}
+      <Dialog open={isFinancialDialogOpen} onOpenChange={handleFinancialDialogChange}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              {editingFinancial ? t.editFinancialStatement : t.addFinancialStatement}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {financialFormError && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded text-sm text-red-600">
+                {financialFormError}
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">{t.fiscalYear} *</label>
+                <Input
+                  value={financialFormData.fiscal_year}
+                  onChange={(e) => setFinancialFormData({ ...financialFormData, fiscal_year: e.target.value })}
+                  placeholder={language === 'zh' ? '例如: 2024' : 'e.g., 2024'}
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">{t.currency}</label>
+                <Select
+                  value={financialFormData.currency_id}
+                  onValueChange={(value) => setFinancialFormData({ ...financialFormData, currency_id: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={language === 'zh' ? '选择货币' : 'Select currency'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {currencies.map((currency: any) => (
+                      <SelectItem key={currency.currency_id} value={currency.currency_id}>
+                        {currency.code} - {currency.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">{t.revenue}</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={financialFormData.revenue}
+                  onChange={(e) => setFinancialFormData({ ...financialFormData, revenue: e.target.value })}
+                  placeholder={language === 'zh' ? '营业收入' : 'Revenue'}
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">{t.profit}</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={financialFormData.net_profit}
+                  onChange={(e) => setFinancialFormData({ ...financialFormData, net_profit: e.target.value })}
+                  placeholder={language === 'zh' ? '净利润' : 'Net Profit'}
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">ROE (%)</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={financialFormData.roe}
+                  onChange={(e) => setFinancialFormData({ ...financialFormData, roe: e.target.value })}
+                  placeholder="ROE"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">{t.debtRatio} (%)</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={financialFormData.debt_ratio}
+                  onChange={(e) => setFinancialFormData({ ...financialFormData, debt_ratio: e.target.value })}
+                  placeholder={language === 'zh' ? '负债率' : 'Debt Ratio'}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-2 block">{t.notesOptional}</label>
+              <Textarea
+                value={financialFormData.notes}
+                onChange={(e) => setFinancialFormData({ ...financialFormData, notes: e.target.value })}
+                rows={3}
+                placeholder={language === 'zh' ? '添加备注...' : 'Add notes...'}
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 mt-6">
+            <Button
+              variant="outline"
+              onClick={() => setIsFinancialDialogOpen(false)}
+              disabled={savingFinancial}
+            >
+              {t.cancel}
+            </Button>
+            <Button
+              onClick={handleSaveFinancialStatement}
+              disabled={savingFinancial}
+            >
+              {savingFinancial ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {t.saving}
+                </>
+              ) : (
+                t.save
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Financial Statement Confirmation Dialog */}
+      <AlertDialog open={deleteFinancialDialogOpen} onOpenChange={setDeleteFinancialDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t.deleteFinancialTitle}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {financialToDelete && t.deleteFinancialDescription.replace('{year}', financialToDelete.fiscal_year)}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t.cancelDelete}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteFinancialStatement} className="bg-red-600 hover:bg-red-700">
+              {t.confirmDelete}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
