@@ -11,8 +11,8 @@ CREATE TABLE IF NOT EXISTS user_article_tags (
   -- Ensure a user can't add the same tag to an article twice
   CONSTRAINT unique_user_article_tag UNIQUE (user_id, article_id, tag_name),
 
-  -- Foreign key to users table (assuming users table exists)
-  CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  -- Foreign key to user table (note: "user" is quoted because it's a reserved word)
+  CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES "user"(user_id) ON DELETE CASCADE
 );
 
 -- Index for faster lookups by article_id and user_id

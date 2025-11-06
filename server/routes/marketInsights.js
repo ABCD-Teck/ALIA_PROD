@@ -873,7 +873,7 @@ router.patch('/article/:id/translation', async (req, res) => {
 // Get all custom tags for a specific article (for the current user)
 router.get('/article/:articleId/tags', authenticateToken, async (req, res) => {
   const { articleId } = req.params;
-  const userId = req.user.id;
+  const userId = req.user.user_id;
 
   try {
     const query = `
@@ -902,7 +902,7 @@ router.get('/article/:articleId/tags', authenticateToken, async (req, res) => {
 router.post('/article/:articleId/tags', authenticateToken, async (req, res) => {
   const { articleId } = req.params;
   const { tagName } = req.body;
-  const userId = req.user.id;
+  const userId = req.user.user_id;
 
   if (!tagName || tagName.trim().length === 0) {
     return res.status(400).json({ error: 'Tag name is required' });
@@ -948,7 +948,7 @@ router.post('/article/:articleId/tags', authenticateToken, async (req, res) => {
 // Remove a custom tag from a specific article
 router.delete('/article/:articleId/tags/:tagName', authenticateToken, async (req, res) => {
   const { articleId, tagName } = req.params;
-  const userId = req.user.id;
+  const userId = req.user.user_id;
 
   try {
     const query = `
