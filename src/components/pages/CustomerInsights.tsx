@@ -708,7 +708,9 @@ const allCompaniesForDropdown = [
 ];
 
   // Get current selected company from the combined list (before any early returns)
-  const company = allCompaniesForDropdown.find(c => c.id === selectedCompany) || allCompaniesForDropdown[0];
+  const company = selectedCompany
+    ? allCompaniesForDropdown.find(c => c.id === selectedCompany)
+    : allCompaniesForDropdown[0];
 
   // Get news from database only (no mock data)
   const allNews = dbNews.map(article => ({
