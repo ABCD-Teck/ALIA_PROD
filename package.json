@@ -74,5 +74,8 @@
             "build": "vite build",
             "server": "node server/index.js",
             "start": "npm run server"
+      },
+      "optionalDependencies": {
+            "@rollup/rollup-linux-x64-gnu": "^4.52.5"
       }
 }
