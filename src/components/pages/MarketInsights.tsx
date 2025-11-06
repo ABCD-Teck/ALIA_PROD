@@ -1095,14 +1095,17 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
                   <div className="flex items-center gap-2">
                     {!tagInputVisible[news.id] ? (
                       <button
-                        onClick={() => toggleTagInput(news.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleTagInput(news.id);
+                        }}
                         className="flex items-center gap-1 px-2 py-1 text-xs text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
                       >
                         <Plus className="h-3 w-3" />
                         <span>{language === 'zh' ? '添加标签' : 'Add Tag'}</span>
                       </button>
                     ) : (
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                         <Input
                           type="text"
                           placeholder={language === 'zh' ? '输入标签...' : 'Enter tag...'}
@@ -1120,7 +1123,10 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
                           autoFocus
                         />
                         <Button
-                          onClick={() => addArticleTag(news.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            addArticleTag(news.id);
+                          }}
                           size="sm"
                           className="h-8 px-3 text-xs"
                           disabled={!articleTagInputs[news.id]?.trim()}
@@ -1128,7 +1134,10 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
                           <Plus className="h-3 w-3" />
                         </Button>
                         <button
-                          onClick={() => toggleTagInput(news.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleTagInput(news.id);
+                          }}
                           className="text-gray-400 hover:text-gray-600"
                         >
                           <X className="h-4 w-4" />
