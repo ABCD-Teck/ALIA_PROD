@@ -1149,8 +1149,9 @@ const allCompaniesForDropdown = [
       fiscal_year: statement.fiscal_year || '',
       revenue: statement.revenue || '',
       net_profit: statement.net_profit || '',
-      roe: statement.roe || '',
-      debt_ratio: statement.debt_ratio || '',
+      // Convert decimal to percentage for display in form (0.15 -> 15)
+      roe: statement.roe ? (Number(statement.roe) * 100).toString() : '',
+      debt_ratio: statement.debt_ratio ? (Number(statement.debt_ratio) * 100).toString() : '',
       currency_id: statement.currency_id || '',
       notes: statement.notes || ''
     });
@@ -1178,8 +1179,9 @@ const allCompaniesForDropdown = [
         fiscal_year: financialFormData.fiscal_year.trim(),
         revenue: financialFormData.revenue ? parseFloat(financialFormData.revenue) : undefined,
         net_profit: financialFormData.net_profit ? parseFloat(financialFormData.net_profit) : undefined,
-        roe: financialFormData.roe ? parseFloat(financialFormData.roe) : undefined,
-        debt_ratio: financialFormData.debt_ratio ? parseFloat(financialFormData.debt_ratio) : undefined,
+        // Convert percentage to decimal for storage (15 -> 0.15)
+        roe: financialFormData.roe ? parseFloat(financialFormData.roe) / 100 : undefined,
+        debt_ratio: financialFormData.debt_ratio ? parseFloat(financialFormData.debt_ratio) / 100 : undefined,
         currency_id: financialFormData.currency_id || undefined,
         notes: financialFormData.notes.trim() || undefined,
       };
