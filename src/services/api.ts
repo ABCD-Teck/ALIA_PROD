@@ -756,6 +756,33 @@ export const marketInsightsApi = {
       body: JSON.stringify(translations),
     });
   },
+
+  // Article tag management
+  getArticleTags: async (articleId: string) => {
+    return fetchApi<{
+      tags: Array<{ name: string; created_at: string }>;
+    }>(`/market-insights/article/${articleId}/tags`);
+  },
+
+  addArticleTag: async (articleId: string, tagName: string) => {
+    return fetchApi<{
+      success: boolean;
+      tag: { name: string; created_at?: string };
+      message?: string;
+    }>(`/market-insights/article/${articleId}/tags`, {
+      method: 'POST',
+      body: JSON.stringify({ tagName }),
+    });
+  },
+
+  removeArticleTag: async (articleId: string, tagName: string) => {
+    return fetchApi<{
+      success: boolean;
+      message: string;
+    }>(`/market-insights/article/${articleId}/tags/${encodeURIComponent(tagName)}`, {
+      method: 'DELETE',
+    });
+  },
 };
 
 // Translation API
