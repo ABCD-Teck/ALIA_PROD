@@ -138,8 +138,6 @@ export function ArticleModal({ isOpen, onClose, articleId, language }: ArticleMo
 
   const t = content[language];
 
-  if (!isOpen) return null;
-
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent
