@@ -869,4 +869,108 @@ router.patch('/article/:id/translation', async (req, res) => {
   }
 });
 
+// GET /api/market-insights/article/:articleId/tags
+// Get all custom tags for a specific article (for the current user)
+router.get('/article/:articleId/tags', authenticateToken, async (req, res) => {
+  const { articleId } = req.params;
+  const userId = req.user.id;
+
+  try {
+    const query = `
+      SELECT tag_name, created_at
+      FROM user_article_tags
+      WHERE user_id = $1 AND article_id = $2
+      ORDER BY created_at DESC
+    `;
+
+    const result = await miaPool.query(query, [userId, articleId]);
+
+    const tags = result.rows.map(row => ({
+      name: row.tag_name,
+      created_at: row.created_at
+    }));
+
+    res.json({ tags });
+  } catch (error) {
+    console.error('[Market Insights] Error fetching article tags:', error);
+    res.status(500).json({ error: 'Failed to fetch article tags', message: error.message });
+  }
+});
+
+// POST /api/market-insights/article/:articleId/tags
+// Add a custom tag to a specific article
+router.post('/article/:articleId/tags', authenticateToken, async (req, res) => {
+  const { articleId } = req.params;
+  const { tagName } = req.body;
+  const userId = req.user.id;
+
+  if (!tagName || tagName.trim().length === 0) {
+    return res.status(400).json({ error: 'Tag name is required' });
+  }
+
+  if (tagName.length > 100) {
+    return res.status(400).json({ error: 'Tag name is too long (max 100 characters)' });
+  }
+
+  try {
+    const query = `
+      INSERT INTO user_article_tags (user_id, article_id, tag_name)
+      VALUES ($1, $2, $3)
+      ON CONFLICT (user_id, article_id, tag_name) DO NOTHING
+      RETURNING id, tag_name, created_at
+    `;
+
+    const result = await miaPool.query(query, [userId, articleId, tagName.trim()]);
+
+    if (result.rows.length === 0) {
+      // Tag already exists
+      return res.json({
+        success: true,
+        message: 'Tag already exists',
+        tag: { name: tagName.trim() }
+      });
+    }
+
+    res.json({
+      success: true,
+      tag: {
+        name: result.rows[0].tag_name,
+        created_at: result.rows[0].created_at
+      }
+    });
+  } catch (error) {
+    console.error('[Market Insights] Error adding article tag:', error);
+    res.status(500).json({ error: 'Failed to add article tag', message: error.message });
+  }
+});
+
+// DELETE /api/market-insights/article/:articleId/tags/:tagName
+// Remove a custom tag from a specific article
+router.delete('/article/:articleId/tags/:tagName', authenticateToken, async (req, res) => {
+  const { articleId, tagName } = req.params;
+  const userId = req.user.id;
+
+  try {
+    const query = `
+      DELETE FROM user_article_tags
+      WHERE user_id = $1 AND article_id = $2 AND tag_name = $3
+      RETURNING id
+    `;
+
+    const result = await miaPool.query(query, [userId, articleId, tagName]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Tag not found' });
+    }
+
+    res.json({
+      success: true,
+      message: 'Tag removed successfully'
+    });
+  } catch (error) {
+    console.error('[Market Insights] Error removing article tag:', error);
+    res.status(500).json({ error: 'Failed to remove article tag', message: error.message });
+  }
+});
+
 module.exports = router;
