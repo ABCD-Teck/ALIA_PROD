@@ -141,17 +141,17 @@ export function ArticleModal({ isOpen, onClose, articleId, language }: ArticleMo
   if (!isOpen) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
-        <DialogHeader className="flex-shrink-0">
-          <DialogTitle className="text-xl font-bold pr-8">
+    <Sheet open={isOpen} onOpenChange={onClose}>
+      <SheetContent className="max-w-4xl max-h-[90vh] flex flex-col overflow-hidden sm:max-w-4xl w-full">
+        <SheetHeader className="flex-shrink-0">
+          <SheetTitle className="text-xl font-bold pr-8">
             {loading ? t.loading : (
               language === 'zh' && article?.title_zh && article?.title_zh.trim() && article?.title_zh !== article?.title_en
                 ? article?.title_zh
                 : article?.title_en
             )}
-          </DialogTitle>
-        </DialogHeader>
+          </SheetTitle>
+        </SheetHeader>
 
         <div className="flex-1 overflow-y-auto min-h-0">
           {loading && (
@@ -314,7 +314,7 @@ export function ArticleModal({ isOpen, onClose, articleId, language }: ArticleMo
           </div>
           )}
         </div>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }
