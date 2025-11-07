@@ -166,6 +166,7 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
   const [articleTags, setArticleTags] = useState<Record<string, string[]>>({});
   const [articleTagInputs, setArticleTagInputs] = useState<Record<string, string>>({});
   const [tagInputVisible, setTagInputVisible] = useState<Record<string, boolean>>({});
+  const [tagOperationLoading, setTagOperationLoading] = useState<Record<string, boolean>>({});
 
   // API state
   const [newsData, setNewsData] = useState<any[]>([]);
@@ -636,25 +637,46 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
     const tagName = articleTagInputs[articleId]?.trim();
     if (!tagName) return;
 
+    // Set loading state
+    setTagOperationLoading(prev => ({ ...prev, [articleId]: true }));
+
     try {
       const response = await marketInsightsApi.addArticleTag(articleId, tagName);
       if (response.data?.success) {
+        // Update tags list
         setArticleTags(prev => ({
           ...prev,
           [articleId]: [...(prev[articleId] || []), tagName]
         }));
+        // Clear input
         setArticleTagInputs(prev => ({
           ...prev,
           [articleId]: ''
         }));
+        // Hide tag input after successful add
+        setTagInputVisible(prev => ({
+          ...prev,
+          [articleId]: false
+        }));
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Failed to add tag to article ${articleId}:`, error);
+      // Show error to user
+      alert(language === 'zh'
+        ? `添加标签失败: ${error.message || '未知错误'}`
+        : `Failed to add tag: ${error.message || 'Unknown error'}`
+      );
+    } finally {
+      // Clear loading state
+      setTagOperationLoading(prev => ({ ...prev, [articleId]: false }));
     }
   };
 
   // Remove tag from article
   const removeArticleTag = async (articleId: string, tagName: string) => {
+    // Set loading state
+    setTagOperationLoading(prev => ({ ...prev, [articleId]: true }));
+
     try {
       const response = await marketInsightsApi.removeArticleTag(articleId, tagName);
       if (response.data?.success) {
@@ -663,8 +685,16 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
           [articleId]: (prev[articleId] || []).filter(t => t !== tagName)
         }));
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Failed to remove tag from article ${articleId}:`, error);
+      // Show error to user
+      alert(language === 'zh'
+        ? `删除标签失败: ${error.message || '未知错误'}`
+        : `Failed to remove tag: ${error.message || 'Unknown error'}`
+      );
+    } finally {
+      // Clear loading state
+      setTagOperationLoading(prev => ({ ...prev, [articleId]: false }));
     }
   };
 
@@ -705,7 +735,8 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Element;
-      if (!target.closest('.relative')) {
+      // Don't close dropdowns if clicking on dropdown elements or tag input areas
+      if (!target.closest('.relative') && !target.closest('.tag-input-container')) {
         closeAllDropdowns();
       }
     };
@@ -1081,10 +1112,15 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
                           <span>{tag}</span>
                           <button
                             onClick={() => removeArticleTag(news.id, tag)}
-                            className="text-blue-400 hover:text-blue-600"
+                            className="text-blue-400 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
                             title={language === 'zh' ? '删除标签' : 'Remove tag'}
+                            disabled={tagOperationLoading[news.id]}
                           >
-                            <X className="h-3 w-3" />
+                            {tagOperationLoading[news.id] ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <X className="h-3 w-3" />
+                            )}
                           </button>
                         </div>
                       ))}
@@ -1105,7 +1141,7 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
                         <span>{language === 'zh' ? '添加标签' : 'Add Tag'}</span>
                       </button>
                     ) : (
-                      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                      <div className="tag-input-container flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                         <Input
                           type="text"
                           placeholder={language === 'zh' ? '输入标签...' : 'Enter tag...'}
@@ -1115,12 +1151,13 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
                             [news.id]: e.target.value
                           }))}
                           onKeyPress={(e) => {
-                            if (e.key === 'Enter') {
+                            if (e.key === 'Enter' && !tagOperationLoading[news.id]) {
                               addArticleTag(news.id);
                             }
                           }}
                           className="w-40 h-8 text-xs"
                           autoFocus
+                          disabled={tagOperationLoading[news.id]}
                         />
                         <Button
                           onClick={(e) => {
@@ -1129,9 +1166,13 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
                           }}
                           size="sm"
                           className="h-8 px-3 text-xs"
-                          disabled={!articleTagInputs[news.id]?.trim()}
+                          disabled={!articleTagInputs[news.id]?.trim() || tagOperationLoading[news.id]}
                         >
-                          <Plus className="h-3 w-3" />
+                          {tagOperationLoading[news.id] ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Plus className="h-3 w-3" />
+                          )}
                         </Button>
                         <button
                           onClick={(e) => {
@@ -1139,6 +1180,7 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
                             toggleTagInput(news.id);
                           }}
                           className="text-gray-400 hover:text-gray-600"
+                          disabled={tagOperationLoading[news.id]}
                         >
                           <X className="h-4 w-4" />
                         </button>
