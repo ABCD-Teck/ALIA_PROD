@@ -195,8 +195,6 @@ export function CustomerInsights({ searchQuery, language }: CustomerInsightsProp
       debtLabel: '负债率',
       incomeStatus: '收入情况',
       financialIndicators: '财务指标',
-      downloadPdfTitle: '下载客户财报PDF',
-      pdfFileName: '比亚迪 BYD 2024 年度财报PDF文件',
       documentManagement: '文档管理',
       customerInfo: '客户信息 (如工商管理注册)',
       ownershipStructure: '股权结构 (如股东权益说明, UBO)',
@@ -298,8 +296,6 @@ export function CustomerInsights({ searchQuery, language }: CustomerInsightsProp
       debtLabel: 'Debt Ratio',
       incomeStatus: 'Income Status',
       financialIndicators: 'Financial Indicators',
-      downloadPdfTitle: 'Download Customer Financial Report PDF',
-      pdfFileName: 'BYD 2024 Annual Financial Report PDF',
       documentManagement: 'Document Management',
       customerInfo: 'Customer Information (e.g., Business Registration)',
       ownershipStructure: 'Ownership Structure (e.g., Shareholder Information, UBO)',
@@ -2026,22 +2022,6 @@ const allCompaniesForDropdown = [
                     </LineChart>
                   </ResponsiveContainer>
                 )}
-              </CardContent>
-            </Card>
-
-            {/* 下载PDF */}
-            <Card>
-              <CardHeader>
-                <CardTitle>{t.downloadPdfTitle}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between p-3 border rounded-lg">
-                  <span className="text-sm">{t.pdfFileName}</span>
-                  <Button variant="outline" size="sm">
-                    <Download className="mr-2 h-4 w-4" />
-                    {t.download}
-                  </Button>
-                </div>
               </CardContent>
             </Card>
             </TabsContent>
