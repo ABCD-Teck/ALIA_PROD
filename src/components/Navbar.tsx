@@ -1,12 +1,13 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Search, Globe, ChevronDown, Plus, Bell, Archive } from 'lucide-react';
+import { Search, Globe, ChevronDown, Plus, Bell, Archive, User, Settings } from 'lucide-react';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from './ui/dropdown-menu';
 import { Breadcrumb } from './Breadcrumb';
 import { Language } from '../App';
+import { UserProfileEditDialog } from './UserProfileEditDialog';
 
 interface NavbarProps {
   language: Language;
@@ -56,6 +57,14 @@ const searchPlaceholders = {
   }
 };
 
+interface UserData {
+  user_id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  role: string;
+}
+
 export function Navbar({
   language,
   onLanguageChange,
@@ -64,6 +73,53 @@ export function Navbar({
 }: NavbarProps) {
   const navigate = useNavigate();
   const location = useLocation();
+  const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
+  const [userData, setUserData] = useState<UserData | null>(null);
+
+  // Load user data from localStorage
+  useEffect(() => {
+    loadUserData();
+  }, []);
+
+  const loadUserData = () => {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        const user: UserData = JSON.parse(userStr);
+        setUserData(user);
+      } catch (error) {
+        console.error('Error parsing user data:', error);
+      }
+    }
+  };
+
+  // Get user initials for avatar
+  const getUserInitials = () => {
+    if (!userData) return 'U';
+    const firstInitial = userData.first_name?.charAt(0)?.toUpperCase() || '';
+    const lastInitial = userData.last_name?.charAt(0)?.toUpperCase() || '';
+    return `${firstInitial}${lastInitial}` || 'U';
+  };
+
+  // Get user display name
+  const getUserDisplayName = () => {
+    if (!userData) return 'User';
+    return `${userData.first_name} ${userData.last_name}`.trim() || userData.email;
+  };
+
+  // Get user role display
+  const getUserRole = () => {
+    if (!userData || !userData.role) return language === 'zh' ? '用户' : 'User';
+
+    const roleMap: Record<string, { zh: string; en: string }> = {
+      admin: { zh: '管理员', en: 'Admin' },
+      user: { zh: '用户', en: 'User' },
+      sales: { zh: '销售', en: 'Sales' },
+      manager: { zh: '经理', en: 'Manager' },
+    };
+
+    return roleMap[userData.role]?.[language] || userData.role;
+  };
 
   // Get the most specific matching placeholder
   const getPlaceholder = () => {
@@ -220,18 +276,42 @@ export function Navbar({
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <div className="flex items-center space-x-3 px-2 py-1.5">
-          <Avatar className="h-8 w-8">
-            <AvatarImage src="/api/placeholder/32/32" alt="User Avatar" />
-            <AvatarFallback>AN</AvatarFallback>
-          </Avatar>
-          <div className="flex flex-col items-start">
-            <span className="text-sm">Andrew</span>
-            <span className="text-xs text-muted-foreground">
-              {language === 'zh' ? '销售' : 'Sales'}
-            </span>
-          </div>
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              className="flex items-center space-x-3 px-2 py-1.5 h-auto hover:bg-accent"
+            >
+              <Avatar className="h-8 w-8">
+                <AvatarFallback>{getUserInitials()}</AvatarFallback>
+              </Avatar>
+              <div className="flex flex-col items-start">
+                <span className="text-sm font-medium">{getUserDisplayName()}</span>
+                <span className="text-xs text-muted-foreground">
+                  {getUserRole()}
+                </span>
+              </div>
+              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuItem
+              onClick={() => setIsProfileDialogOpen(true)}
+              className="cursor-pointer"
+            >
+              <User className="mr-2 h-4 w-4" />
+              {language === 'zh' ? '编辑个人信息' : 'Edit Profile'}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => navigate('/settings')}
+              className="cursor-pointer"
+            >
+              <Settings className="mr-2 h-4 w-4" />
+              {language === 'zh' ? '设置' : 'Settings'}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
       </nav>
       
@@ -241,6 +321,13 @@ export function Navbar({
         />
         {renderPageActions()}
       </div>
+
+      <UserProfileEditDialog
+        isOpen={isProfileDialogOpen}
+        onClose={() => setIsProfileDialogOpen(false)}
+        language={language}
+        onProfileUpdate={loadUserData}
+      />
     </div>
   );
 }

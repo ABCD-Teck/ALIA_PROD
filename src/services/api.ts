@@ -639,6 +639,20 @@ export const authApi = {
     clearTokens();
     return { data: { message: 'Logged out successfully' } };
   },
+
+  updateProfile: async (data: {
+    first_name?: string;
+    last_name?: string;
+    email?: string;
+  }) => {
+    return fetchApi<{
+      user: any;
+      message: string;
+    }>('/auth/me', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
 };
 
 // Market Insights API

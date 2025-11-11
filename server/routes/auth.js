@@ -127,6 +127,80 @@ router.get('/me', authenticateToken, async (req, res) => {
   }
 });
 
+// Update current user profile (protected route)
+router.put('/me', authenticateToken, async (req, res) => {
+  try {
+    const { first_name, last_name, email } = req.body;
+    const userId = req.user.user_id;
+
+    // Build update query dynamically based on provided fields
+    const updates = [];
+    const values = [];
+    let paramCount = 1;
+
+    if (first_name !== undefined) {
+      updates.push(`first_name = $${paramCount}`);
+      values.push(first_name);
+      paramCount++;
+    }
+
+    if (last_name !== undefined) {
+      updates.push(`last_name = $${paramCount}`);
+      values.push(last_name);
+      paramCount++;
+    }
+
+    if (email !== undefined) {
+      // Check if email is already taken by another user
+      const emailCheck = await pool.query(
+        'SELECT user_id FROM "user" WHERE email = $1 AND user_id != $2',
+        [email, userId]
+      );
+
+      if (emailCheck.rows.length > 0) {
+        return res.status(409).json({ error: 'Email already in use' });
+      }
+
+      updates.push(`email = $${paramCount}`);
+      values.push(email);
+      paramCount++;
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    // Add updated_at
+    updates.push(`updated_at = NOW()`);
+
+    // Add user_id as last parameter
+    values.push(userId);
+
+    const query = `
+      UPDATE "user"
+      SET ${updates.join(', ')}
+      WHERE user_id = $${paramCount}
+      RETURNING user_id, email, first_name, last_name, role, is_active, created_at, updated_at
+    `;
+
+    const result = await pool.query(query, values);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const updatedUser = result.rows[0];
+
+    res.json({
+      user: updatedUser,
+      message: 'Profile updated successfully'
+    });
+  } catch (error) {
+    console.error('Update profile error:', error);
+    res.status(500).json({ error: 'Failed to update profile', message: error.message });
+  }
+});
+
 // Refresh token endpoint
 router.post('/refresh', async (req, res) => {
   try {
