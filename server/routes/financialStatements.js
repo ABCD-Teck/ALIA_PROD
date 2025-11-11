@@ -179,6 +179,22 @@ router.put('/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Financial statement not found' });
     }
 
+    // Look up currency_id from currency table if a currency code was provided
+    let resolvedCurrencyId = currency_id;
+    if (currency_id) {
+      // Extract currency code (handle both "USD" and "USD - US Dollar" formats)
+      const currencyCode = currency_id.split(' - ')[0].trim();
+
+      const currencyQuery = `
+        SELECT currency_id FROM currency WHERE code = $1
+      `;
+      const currencyResult = await pool.query(currencyQuery, [currencyCode]);
+
+      if (currencyResult.rows.length > 0) {
+        resolvedCurrencyId = currencyResult.rows[0].currency_id;
+      }
+    }
+
     const query = `
       UPDATE financial_statement
       SET
@@ -200,7 +216,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
       net_profit,
       roe,
       debt_ratio,
-      currency_id,
+      resolvedCurrencyId,
       id,
       req.user.user_id
     ];

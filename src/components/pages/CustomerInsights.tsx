@@ -1137,10 +1137,13 @@ const allCompaniesForDropdown = [
 
   const handleEditFinancialStatement = (statement: any) => {
     setEditingFinancial(statement);
+    // Use the same scale factor as display (1e8 for Chinese, 1e9 for English)
+    const revenueDivider = language === 'zh' ? 1e8 : 1e9;
     setFinancialFormData({
-      fiscal_year: statement.fiscal_year || '',
-      revenue: statement.revenue || '',
-      net_profit: statement.net_profit || '',
+      fiscal_year: statement.fiscal_year ? String(statement.fiscal_year) : '',
+      // Convert from raw value to display units (e.g., 99900000000 -> 999)
+      revenue: statement.revenue ? String(Number(statement.revenue) / revenueDivider) : '',
+      net_profit: statement.net_profit ? String(Number(statement.net_profit) / revenueDivider) : '',
       // Convert decimal to percentage for display in form (0.15 -> 15)
       roe: statement.roe ? (Number(statement.roe) * 100).toString() : '',
       debt_ratio: statement.debt_ratio ? (Number(statement.debt_ratio) * 100).toString() : '',
@@ -1166,11 +1169,14 @@ const allCompaniesForDropdown = [
     setFinancialFormError(null);
 
     try {
+      // Use the same scale factor as display (1e8 for Chinese, 1e9 for English)
+      const revenueDivider = language === 'zh' ? 1e8 : 1e9;
       const data = {
         customer_id: selectedCustomerId.toString(),
         fiscal_year: financialFormData.fiscal_year.trim(),
-        revenue: financialFormData.revenue ? parseFloat(financialFormData.revenue) : undefined,
-        net_profit: financialFormData.net_profit ? parseFloat(financialFormData.net_profit) : undefined,
+        // Convert from display units back to raw value (e.g., 999 -> 99900000000)
+        revenue: financialFormData.revenue ? parseFloat(financialFormData.revenue) * revenueDivider : undefined,
+        net_profit: financialFormData.net_profit ? parseFloat(financialFormData.net_profit) * revenueDivider : undefined,
         // Convert percentage to decimal for storage (15 -> 0.15)
         roe: financialFormData.roe ? parseFloat(financialFormData.roe) / 100 : undefined,
         debt_ratio: financialFormData.debt_ratio ? parseFloat(financialFormData.debt_ratio) / 100 : undefined,
@@ -2697,24 +2703,28 @@ const allCompaniesForDropdown = [
               </div>
 
               <div>
-                <label className="text-sm font-medium mb-2 block">{t.revenue}</label>
+                <label className="text-sm font-medium mb-2 block">
+                  {t.revenue} ({language === 'zh' ? '亿' : 'B'})
+                </label>
                 <Input
                   type="number"
                   step="0.01"
                   value={financialFormData.revenue}
                   onChange={(e) => setFinancialFormData({ ...financialFormData, revenue: e.target.value })}
-                  placeholder={language === 'zh' ? '营业收入' : 'Revenue'}
+                  placeholder={language === 'zh' ? '营业收入（亿）' : 'Revenue (Billions)'}
                 />
               </div>
 
               <div>
-                <label className="text-sm font-medium mb-2 block">{t.profit}</label>
+                <label className="text-sm font-medium mb-2 block">
+                  {t.profit} ({language === 'zh' ? '亿' : 'B'})
+                </label>
                 <Input
                   type="number"
                   step="0.01"
                   value={financialFormData.net_profit}
                   onChange={(e) => setFinancialFormData({ ...financialFormData, net_profit: e.target.value })}
-                  placeholder={language === 'zh' ? '净利润' : 'Net Profit'}
+                  placeholder={language === 'zh' ? '净利润（亿）' : 'Net Profit (Billions)'}
                 />
               </div>
 
