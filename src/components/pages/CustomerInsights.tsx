@@ -73,7 +73,7 @@ export function CustomerInsights({ searchQuery, language }: CustomerInsightsProp
   const [dbCustomers, setDbCustomers] = useState<any[]>([]);
   const [loadingCustomers, setLoadingCustomers] = useState(true);
   const [customerLoadError, setCustomerLoadError] = useState<string | null>(null);
-  const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
 
   // News from database state
   const [dbNews, setDbNews] = useState<any[]>([]);
@@ -647,12 +647,9 @@ export function CustomerInsights({ searchQuery, language }: CustomerInsightsProp
   useEffect(() => {
     // Priority 1: If URL param is provided, use it
     if (urlCustomerId) {
-      const customerId = parseInt(urlCustomerId, 10);
-      if (!isNaN(customerId)) {
-        setSelectedCustomerId(customerId);
-        setSelectedCompany(`db_${customerId}`);
-        return;
-      }
+      setSelectedCustomerId(urlCustomerId);
+      setSelectedCompany(`db_${urlCustomerId}`);
+      return;
     }
 
     // Priority 2: Set default customer only if none selected and customers are loaded
@@ -662,8 +659,6 @@ export function CustomerInsights({ searchQuery, language }: CustomerInsightsProp
       setSelectedCompany(`db_${firstCustomer.customer_id}`);
     }
   }, [urlCustomerId, dbCustomers, selectedCustomerId]);
-
-  // 过滤搜索结果
   // Filter all companies (mock + database) based on search
 const allCompaniesForDropdown = [
   ...companies,
@@ -877,6 +872,7 @@ const allCompaniesForDropdown = [
     const sortedStatements = [...financialStatements].sort(
       (a, b) => Number(b.fiscal_year || 0) - Number(a.fiscal_year || 0)
     );
+    // Latest statement is simply the highest fiscal year
     const latestStatement = sortedStatements[0];
     const currencySymbol =
       (latestStatement && latestStatement.currency_symbol) || (language === 'zh' ? '¥' : '$');
@@ -905,7 +901,7 @@ const allCompaniesForDropdown = [
     };
 
     const annualData = sortedStatements.map((statement) => ({
-      financial_statement_id: statement.financial_statement_id,
+      financial_statement_id: statement.statement_id,
       year: statement.fiscal_year,
       revenue: formatCurrencyDisplay(statement.revenue),
       profit: formatCurrencyDisplay(statement.net_profit),
@@ -1185,7 +1181,7 @@ const allCompaniesForDropdown = [
       if (editingFinancial) {
         // Update existing
         const { customer_id, ...updateData } = data;
-        await api.financialStatementsApi.update(editingFinancial.financial_statement_id, updateData);
+        await api.financialStatementsApi.update(editingFinancial.statement_id, updateData);
       } else {
         // Create new
         await api.financialStatementsApi.create(data);
@@ -1211,7 +1207,7 @@ const allCompaniesForDropdown = [
     if (!financialToDelete) return;
 
     try {
-      await api.financialStatementsApi.delete(financialToDelete.financial_statement_id);
+      await api.financialStatementsApi.delete(financialToDelete.statement_id);
 
       // Refresh financial statements
       if (selectedCustomerId) {
@@ -1356,8 +1352,7 @@ const allCompaniesForDropdown = [
             // If it's a database customer, update selectedCustomerId
             const selected = allCompaniesForDropdown.find(c => c.id === value);
             if (selected && 'customerId' in selected) {
-              setSelectedCustomerId(selected.customerId);
-              setAnnotationsError(null);
+              navigate(`/customer-insights/${selected.customerId}`);
             } else {
               setSelectedCustomerId(null);
               setDbAnnotations([]);
@@ -1836,6 +1831,12 @@ const allCompaniesForDropdown = [
                         {processedFinancials.annualData.map((item: any, index: number) => {
                           const rowDivider =
                             index !== processedFinancials.annualData.length - 1 ? 'border-b border-gray-100' : '';
+                          // Find the first item with actual financial data (not N/A)
+                          const firstDataIndex = processedFinancials.annualData.findIndex(
+                            (d: any) => d.revenue !== 'N/A' && d.revenue !== '—'
+                          );
+                          const isLatestWithData = index === firstDataIndex;
+
                           return (
                             <tr key={item.year ?? index} className={rowDivider}>
                               <td className="py-3 px-4 text-black">{item.year ?? '—'}</td>
@@ -1843,41 +1844,46 @@ const allCompaniesForDropdown = [
                               <td className="py-3 px-4 text-black">{item.profit ?? '—'}</td>
                               <td className="py-3 px-4 text-black">{item.roe ?? '—'}</td>
                               <td className="py-3 px-4 text-black">{item.debtRatio ?? '—'}</td>
-                              {selectedCustomerId && item.financial_statement_id && (
+                              {selectedCustomerId && (
                                 <td className="py-3 px-4">
-                                  <div className="flex gap-2">
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => {
-                                        // Find the original statement from financialStatements
-                                        const originalStatement = financialStatements.find(
-                                          s => s.financial_statement_id === item.financial_statement_id
-                                        );
-                                        if (originalStatement) {
-                                          handleEditFinancialStatement(originalStatement);
-                                        }
-                                      }}
-                                    >
-                                      <Edit className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => {
-                                        // Find the original statement from financialStatements
-                                        const originalStatement = financialStatements.find(
-                                          s => s.financial_statement_id === item.financial_statement_id
-                                        );
-                                        if (originalStatement) {
-                                          setFinancialToDelete(originalStatement);
-                                          setDeleteFinancialDialogOpen(true);
-                                        }
-                                      }}
-                                    >
-                                      <Trash2 className="h-4 w-4 text-red-500" />
-                                    </Button>
-                                  </div>
+                                  {item.financial_statement_id && (
+                                    <div className="flex gap-2">
+                                      {/* Only show Edit button for most recent statement with data */}
+                                      {isLatestWithData && (
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => {
+                                            // Find the original statement from financialStatements
+                                            const originalStatement = financialStatements.find(
+                                              s => s.statement_id === item.financial_statement_id
+                                            );
+                                            if (originalStatement) {
+                                              handleEditFinancialStatement(originalStatement);
+                                            }
+                                          }}
+                                        >
+                                          <Edit className="h-4 w-4" />
+                                        </Button>
+                                      )}
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                          // Find the original statement from financialStatements
+                                          const originalStatement = financialStatements.find(
+                                            s => s.statement_id === item.financial_statement_id
+                                          );
+                                          if (originalStatement) {
+                                            setFinancialToDelete(originalStatement);
+                                            setDeleteFinancialDialogOpen(true);
+                                          }
+                                        }}
+                                      >
+                                        <Trash2 className="h-4 w-4 text-red-500" />
+                                      </Button>
+                                    </div>
+                                  )}
                                 </td>
                               )}
                             </tr>
@@ -2029,7 +2035,18 @@ const allCompaniesForDropdown = [
             <TabsContent value="interaction" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>{t.latestInteractions}</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle>{t.latestInteractions}</CardTitle>
+                  <Button
+                    variant="teal"
+                    size="sm"
+                    onClick={() => navigate('/interactions/create')}
+                    className="flex items-center gap-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    {language === 'zh' ? '添加互动' : 'Add Interaction'}
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
