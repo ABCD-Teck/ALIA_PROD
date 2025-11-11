@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Search, Globe, ChevronDown, Plus, Bell, Archive, User, Settings } from 'lucide-react';
 import { Input } from './ui/input';
@@ -8,6 +8,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Breadcrumb } from './Breadcrumb';
 import { Language } from '../App';
 import { UserProfileEditDialog } from './UserProfileEditDialog';
+import { customersApi } from '../services/api';
 
 interface NavbarProps {
   language: Language;
@@ -76,9 +77,38 @@ export function Navbar({
   const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
   const [userData, setUserData] = useState<UserData | null>(null);
 
+  // Autocomplete states for interactions page
+  const [customerSuggestions, setCustomerSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
+  const searchRef = useRef<HTMLDivElement>(null);
+
   // Load user data from localStorage
   useEffect(() => {
     loadUserData();
+  }, []);
+
+  // Fetch customer suggestions for interactions page
+  useEffect(() => {
+    if (location.pathname === '/interactions') {
+      fetchCustomerSuggestions();
+    } else {
+      setCustomerSuggestions([]);
+      setShowSuggestions(false);
+    }
+  }, [location.pathname]);
+
+  // Handle click outside to close suggestions
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+        setActiveSuggestionIndex(-1);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const loadUserData = () => {
@@ -90,6 +120,18 @@ export function Navbar({
       } catch (error) {
         console.error('Error parsing user data:', error);
       }
+    }
+  };
+
+  const fetchCustomerSuggestions = async () => {
+    try {
+      const response = await customersApi.getAll({ limit: 1000 });
+      if (response.data?.customers) {
+        const uniqueNames = [...new Set(response.data.customers.map((c: any) => c.company_name))].filter(Boolean);
+        setCustomerSuggestions(uniqueNames as string[]);
+      }
+    } catch (error) {
+      console.error('Error fetching customer suggestions:', error);
     }
   };
 
@@ -119,6 +161,55 @@ export function Navbar({
     };
 
     return roleMap[userData.role]?.[language] || userData.role;
+  };
+
+  // Filter suggestions based on search query
+  const getFilteredSuggestions = () => {
+    if (!searchQuery || location.pathname !== '/interactions') {
+      return [];
+    }
+    return customerSuggestions.filter(name =>
+      name.toLowerCase().includes(searchQuery.toLowerCase())
+    ).slice(0, 10); // Limit to 10 suggestions
+  };
+
+  // Handle suggestion click
+  const handleSuggestionClick = (suggestion: string) => {
+    onSearchChange(suggestion);
+    setShowSuggestions(false);
+    setActiveSuggestionIndex(-1);
+  };
+
+  // Handle keyboard navigation in suggestions
+  const handleSearchKeyDown = (e: React.KeyboardEvent) => {
+    const filteredSuggestions = getFilteredSuggestions();
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveSuggestionIndex(prev =>
+        prev < filteredSuggestions.length - 1 ? prev + 1 : prev
+      );
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveSuggestionIndex(prev => (prev > 0 ? prev - 1 : -1));
+    } else if (e.key === 'Enter' && activeSuggestionIndex >= 0) {
+      e.preventDefault();
+      handleSuggestionClick(filteredSuggestions[activeSuggestionIndex]);
+    } else if (e.key === 'Escape') {
+      setShowSuggestions(false);
+      setActiveSuggestionIndex(-1);
+    }
+  };
+
+  // Handle search input change
+  const handleSearchChange = (value: string) => {
+    onSearchChange(value);
+    if (location.pathname === '/interactions' && value.length > 0) {
+      setShowSuggestions(true);
+      setActiveSuggestionIndex(-1);
+    } else {
+      setShowSuggestions(false);
+    }
   };
 
   // Get the most specific matching placeholder
@@ -218,15 +309,41 @@ export function Navbar({
     <div className="bg-background border-b border-border">
       <nav className="h-16 px-6 flex items-center justify-between">
       <div className="flex-1 max-w-md">
-        <div className="relative">
+        <div className="relative" ref={searchRef}>
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
           <Input
             type="text"
             placeholder={placeholder}
             value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            onKeyDown={handleSearchKeyDown}
+            onFocus={() => {
+              if (location.pathname === '/interactions' && searchQuery.length > 0) {
+                setShowSuggestions(true);
+              }
+            }}
             className="pl-10"
           />
+
+          {/* Autocomplete dropdown for interactions page */}
+          {showSuggestions && location.pathname === '/interactions' && getFilteredSuggestions().length > 0 && (
+            <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
+              {getFilteredSuggestions().map((suggestion, index) => (
+                <div
+                  key={suggestion}
+                  onClick={() => handleSuggestionClick(suggestion)}
+                  className={`px-4 py-2 cursor-pointer hover:bg-teal-50 transition-colors ${
+                    index === activeSuggestionIndex ? 'bg-teal-100' : ''
+                  }`}
+                >
+                  <div className="flex items-center">
+                    <Search className="h-4 w-4 text-gray-400 mr-2" />
+                    <span className="text-sm">{suggestion}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

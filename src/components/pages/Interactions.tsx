@@ -226,6 +226,8 @@ export function Interactions({ searchQuery, language }: InteractionsProps) {
   // Map interaction to activity format
   const mapToActivity = (int: any) => ({
     id: int.interaction_id,
+    customerId: int.customer_id,
+    companyName: int.company_name || 'N/A',
     date: new Date(int.interaction_date).toISOString().split('T')[0],
     title: int.subject,
     titleEn: int.subject,
@@ -251,7 +253,8 @@ export function Interactions({ searchQuery, language }: InteractionsProps) {
     ? allPastActivities.filter(activity =>
         (language === 'zh' ? activity.title : activity.titleEn).toLowerCase().includes(searchQuery.toLowerCase()) ||
         (language === 'zh' ? activity.type : activity.typeEn).toLowerCase().includes(searchQuery.toLowerCase()) ||
-        activity.date.includes(searchQuery)
+        activity.date.includes(searchQuery) ||
+        activity.companyName.toLowerCase().includes(searchQuery.toLowerCase())
       )
     : allPastActivities;
 
@@ -259,7 +262,8 @@ export function Interactions({ searchQuery, language }: InteractionsProps) {
     ? allFutureActivities.filter(activity =>
         (language === 'zh' ? activity.title : activity.titleEn).toLowerCase().includes(searchQuery.toLowerCase()) ||
         (language === 'zh' ? activity.type : activity.typeEn).toLowerCase().includes(searchQuery.toLowerCase()) ||
-        activity.date.includes(searchQuery)
+        activity.date.includes(searchQuery) ||
+        activity.companyName.toLowerCase().includes(searchQuery.toLowerCase())
       )
     : allFutureActivities;
 
@@ -367,7 +371,19 @@ export function Interactions({ searchQuery, language }: InteractionsProps) {
                         
                         {/* Details */}
                         <div className="text-sm text-gray-600 space-y-1">
-                          <p>{language === 'zh' ? activity.details : activity.detailsEn}</p>
+                          <p>
+                            {language === 'zh' ? '公司' : 'Company'}:{' '}
+                            {activity.customerId ? (
+                              <span
+                                className="text-teal-600 hover:text-teal-800 hover:underline cursor-pointer font-medium"
+                                onClick={() => navigate(`/customer-insights/${activity.customerId}`)}
+                              >
+                                {activity.companyName}
+                              </span>
+                            ) : (
+                              <span>{activity.companyName}</span>
+                            )}
+                          </p>
                           <p>{language === 'zh' ? activity.method : activity.methodEn}</p>
                         </div>
                       </div>
@@ -458,7 +474,19 @@ export function Interactions({ searchQuery, language }: InteractionsProps) {
 
                         {/* Details */}
                         <div className="text-sm text-gray-600 space-y-1">
-                          <p>{language === 'zh' ? activity.details : activity.detailsEn}</p>
+                          <p>
+                            {language === 'zh' ? '公司' : 'Company'}:{' '}
+                            {activity.customerId ? (
+                              <span
+                                className="text-teal-600 hover:text-teal-800 hover:underline cursor-pointer font-medium"
+                                onClick={() => navigate(`/customer-insights/${activity.customerId}`)}
+                              >
+                                {activity.companyName}
+                              </span>
+                            ) : (
+                              <span>{activity.companyName}</span>
+                            )}
+                          </p>
                           <p>{language === 'zh' ? activity.method : activity.methodEn}</p>
                         </div>
                       </div>

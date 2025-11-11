@@ -30,6 +30,7 @@ type Stage = 'Lead' | 'Proposal' | 'Negotiation' | 'Won' | 'Lost';
 
 interface Opportunity {
   id: number;
+  customerId: string;
   customer: string;
   customerCn?: string;
   opportunityName: string;
@@ -110,6 +111,7 @@ export function Opportunities({
 
           return {
             id: opp.opportunity_id || opp.id,
+            customerId: opp.customer_id || '',
             customer: opp.company_name || '',
             customerCn: opp.company_name || '',
             opportunityName: opp.name || '',
@@ -497,7 +499,15 @@ export function Opportunities({
                         onDoubleClick={() => handleRowDoubleClick(opportunity.id)}
                       >
                         <TableCell>
-                          {language === 'zh' && opportunity.customerCn ? opportunity.customerCn : opportunity.customer}
+                          <span
+                            className="text-teal-600 hover:text-teal-800 hover:underline cursor-pointer font-medium"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/customer-insights/${opportunity.customerId}`);
+                            }}
+                          >
+                            {language === 'zh' && opportunity.customerCn ? opportunity.customerCn : opportunity.customer}
+                          </span>
                         </TableCell>
                         <TableCell>
                           <div className="max-w-[180px] truncate">
