@@ -155,12 +155,14 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
   const [regions, setRegions] = useState<any[]>([]);
   const [popularTags, setPopularTags] = useState<any[]>([]);
   const [bucketTags, setBucketTags] = useState<any[]>([]); // Top 5 tags for selected bucket
+  const [userCustomTags, setUserCustomTags] = useState<any[]>([]); // User's custom tags
 
-  // Filter states (1: Bucket, 2: Tags, 3: Region, 4: TimeFrame)
+  // Filter states (1: Bucket, 2: Tags, 3: Region, 4: TimeFrame, 5: Custom Tag)
   const [selectedLevel1, setSelectedLevel1] = useState('all'); // Bucket
   const [selectedLevel2, setSelectedLevel2] = useState('all'); // Tag
   const [selectedLevel3, setSelectedLevel3] = useState('all'); // Region
   const [selectedTimeFrame, setSelectedTimeFrame] = useState('30d'); // TimeFrame (moved to 4th position)
+  const [selectedCustomTag, setSelectedCustomTag] = useState('all'); // Custom user tag filter
 
   // Per-article tags state
   const [articleTags, setArticleTags] = useState<Record<string, string[]>>({});
@@ -195,16 +197,19 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
     level2: boolean;
     level3: boolean;
     timeFrame: boolean;
+    customTag: boolean;
   }>({
     level1: false,
     level2: false,
     level3: false,
-    timeFrame: false
+    timeFrame: false,
+    customTag: false
   });
 
   // Load initial data from API
   useEffect(() => {
     loadInitialData();
+    loadUserCustomTags();
   }, []);
 
   // Load bucket-specific tags when bucket changes
@@ -292,6 +297,20 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
 
       console.log(`Using fallback tags for bucket: ${bucketName}`, fallbackTags);
       setBucketTags(fallbackTags);
+    }
+  };
+
+  // Load user's custom tags
+  const loadUserCustomTags = async () => {
+    try {
+      const response = await marketInsightsApi.getUserTags();
+      if (response.data && response.data.tags) {
+        console.log(`Loaded ${response.data.tags.length} custom tags for user`);
+        setUserCustomTags(response.data.tags);
+      }
+    } catch (err) {
+      console.error('Failed to load user custom tags:', err);
+      setUserCustomTags([]);
     }
   };
 
@@ -395,6 +414,9 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
       // Get tag code for the selected level2 (bucket tag)
       const tagCode = selectedLevel2 === 'all' ? undefined : selectedLevel2;
 
+      // Get custom tag filter
+      const customTag = selectedCustomTag === 'all' ? undefined : selectedCustomTag;
+
       // Use searchQuery for search
       let searchTerms = searchQuery?.trim() || undefined;
 
@@ -406,6 +428,7 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
         region: regionName,
         search: searchTerms,
         tag_code: tagCode, // NEW: Use tag_code instead of adding to search
+        custom_tag: customTag, // NEW: Filter by custom user tags
         importance: 1, // Minimum importance to ensure quality
         limit: limit,
         offset: currentOffset
@@ -467,7 +490,7 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
   useEffect(() => {
     setOffset(0);
     loadArticles(false);
-  }, [selectedLevel1, selectedLevel2, selectedLevel3, selectedTimeFrame, searchQuery]);
+  }, [selectedLevel1, selectedLevel2, selectedLevel3, selectedTimeFrame, selectedCustomTag, searchQuery]);
 
   // Auto-translate content for Chinese interface
   const autoTranslate = async (articleId: string, text: string, type: 'title' | 'content' | 'source') => {
@@ -605,7 +628,7 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedLevel1, selectedLevel2, selectedLevel3, selectedTimeFrame, searchQuery]);
+  }, [selectedLevel1, selectedLevel2, selectedLevel3, selectedTimeFrame, selectedCustomTag, searchQuery]);
 
   // Load tags for all displayed articles
   useEffect(() => {
@@ -658,6 +681,8 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
           ...prev,
           [articleId]: false
         }));
+        // Reload user custom tags to update the dropdown
+        loadUserCustomTags();
       }
     } catch (error: any) {
       console.error(`Failed to add tag to article ${articleId}:`, error);
@@ -684,6 +709,8 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
           ...prev,
           [articleId]: (prev[articleId] || []).filter(t => t !== tagName)
         }));
+        // Reload user custom tags to update the dropdown
+        loadUserCustomTags();
       }
     } catch (error: any) {
       console.error(`Failed to remove tag from article ${articleId}:`, error);
@@ -707,7 +734,7 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
   };
 
   // 切换dropdown状态
-  const toggleDropdown = (level: 'level1' | 'level2' | 'level3' | 'timeFrame') => {
+  const toggleDropdown = (level: 'level1' | 'level2' | 'level3' | 'timeFrame' | 'customTag') => {
     setDropdownOpen(prev => ({
       ...prev,
       [level]: !prev[level]
@@ -720,7 +747,8 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
       level1: false,
       level2: false,
       level3: false,
-      timeFrame: false
+      timeFrame: false,
+      customTag: false
     });
   };
 
@@ -953,6 +981,55 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
                 </div>
               )}
             </div>
+
+            {/* 第五级：我的自定义标签 */}
+            {userCustomTags.length > 0 && (
+              <div className="relative">
+                <button
+                  onClick={() => toggleDropdown('customTag')}
+                  className="flex items-center justify-between w-full px-4 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors min-w-32"
+                >
+                  <span className="text-purple-600 font-medium">
+                    {selectedCustomTag === 'all'
+                      ? (language === 'zh' ? '我的标签' : 'My Tags')
+                      : selectedCustomTag
+                    }
+                  </span>
+                  {dropdownOpen.customTag ? <ChevronUp className="h-4 w-4 text-purple-600" /> : <ChevronDown className="h-4 w-4 text-purple-600" />}
+                </button>
+
+                {dropdownOpen.customTag && (
+                  <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 min-w-48 max-h-80 overflow-y-auto">
+                    <div className="py-2">
+                      <button
+                        onClick={() => {
+                          setSelectedCustomTag('all');
+                          closeAllDropdowns();
+                        }}
+                        className="w-full text-left px-4 py-2 text-purple-600 hover:bg-purple-50 transition-colors flex justify-between items-center"
+                      >
+                        <span>{language === 'zh' ? '全部标签' : 'All Tags'}</span>
+                      </button>
+                      {userCustomTags.map((tag) => (
+                        <button
+                          key={tag.name}
+                          onClick={() => {
+                            setSelectedCustomTag(tag.name);
+                            closeAllDropdowns();
+                          }}
+                          className="w-full text-left px-4 py-2 text-purple-600 hover:bg-purple-50 transition-colors flex justify-between items-center"
+                        >
+                          <span className="truncate">{tag.name}</span>
+                          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full ml-2 flex-shrink-0">
+                            {tag.usage_count}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
         </div>
@@ -1107,12 +1184,25 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
                       {articleTags[news.id].map((tag, index) => (
                         <div
                           key={index}
-                          className="flex items-center gap-1 px-2 py-1 bg-blue-50 rounded-full text-xs text-blue-700 border border-blue-200"
+                          className="flex items-center gap-1 px-2 py-1 bg-purple-50 rounded-full text-xs text-purple-700 border border-purple-200"
                         >
-                          <span>{tag}</span>
                           <button
-                            onClick={() => removeArticleTag(news.id, tag)}
-                            className="text-blue-400 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedCustomTag(tag);
+                              closeAllDropdowns();
+                            }}
+                            className="hover:underline cursor-pointer"
+                            title={language === 'zh' ? `按"${tag}"标签筛选` : `Filter by "${tag}" tag`}
+                          >
+                            {tag}
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeArticleTag(news.id, tag);
+                            }}
+                            className="text-purple-400 hover:text-purple-600 disabled:opacity-50 disabled:cursor-not-allowed"
                             title={language === 'zh' ? '删除标签' : 'Remove tag'}
                             disabled={tagOperationLoading[news.id]}
                           >
