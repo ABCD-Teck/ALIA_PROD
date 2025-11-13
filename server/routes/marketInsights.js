@@ -96,9 +96,12 @@ router.get('/articles', authenticateToken, async (req, res) => {
       company,
       search,
       tag_code, // NEW: Support for bucket tag filtering
+      custom_tag, // NEW: Support for custom user tag filtering
       limit = 20,
       offset = 0
     } = req.query;
+
+    const userId = req.user.user_id;
 
     let query = `
       SELECT
@@ -183,6 +186,20 @@ router.get('/articles', authenticateToken, async (req, res) => {
           AND bt.is_active = true
         )`;
       queryParams.push(tag_code, bucket);
+      paramCount += 2;
+    }
+
+    // Filter by custom user tag
+    if (custom_tag && custom_tag !== 'all') {
+      query += `
+        AND EXISTS (
+          SELECT 1
+          FROM user_article_tags uat
+          WHERE uat.article_id = na.news_id
+          AND uat.user_id = $${paramCount}
+          AND uat.tag_name = $${paramCount + 1}
+        )`;
+      queryParams.push(userId, custom_tag);
       paramCount += 2;
     }
 
@@ -866,6 +883,38 @@ router.patch('/article/:id/translation', async (req, res) => {
   } catch (error) {
     console.error('[Market Insights] Error updating article translation:', error);
     res.status(500).json({ error: 'Failed to update translation', message: error.message });
+  }
+});
+
+// GET /api/market-insights/user-tags
+// Get all unique custom tags created by the current user with usage count
+router.get('/user-tags', authenticateToken, async (req, res) => {
+  const userId = req.user.user_id;
+
+  try {
+    const query = `
+      SELECT
+        tag_name,
+        COUNT(*) as usage_count,
+        MAX(created_at) as last_used
+      FROM user_article_tags
+      WHERE user_id = $1
+      GROUP BY tag_name
+      ORDER BY usage_count DESC, tag_name ASC
+    `;
+
+    const result = await miaPool.query(query, [userId]);
+
+    const tags = result.rows.map(row => ({
+      name: row.tag_name,
+      usage_count: parseInt(row.usage_count),
+      last_used: row.last_used
+    }));
+
+    res.json({ tags });
+  } catch (error) {
+    console.error('[Market Insights] Error fetching user tags:', error);
+    res.status(500).json({ error: 'Failed to fetch user tags', message: error.message });
   }
 });
 

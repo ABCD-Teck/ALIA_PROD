@@ -676,6 +676,7 @@ export const marketInsightsApi = {
     company?: string;
     search?: string;
     tag_code?: string; // NEW: Support for bucket tag filtering
+    custom_tag?: string; // NEW: Support for custom user tag filtering
     limit?: number;
     offset?: number;
   }) => {
@@ -686,6 +687,7 @@ export const marketInsightsApi = {
     if (params?.company) queryParams.append('company', params.company);
     if (params?.search) queryParams.append('search', params.search);
     if (params?.tag_code) queryParams.append('tag_code', params.tag_code); // NEW
+    if (params?.custom_tag) queryParams.append('custom_tag', params.custom_tag); // NEW
     if (params?.limit) queryParams.append('limit', params.limit.toString());
     if (params?.offset) queryParams.append('offset', params.offset.toString());
 
@@ -772,6 +774,12 @@ export const marketInsightsApi = {
   },
 
   // Article tag management
+  getUserTags: async () => {
+    return fetchApi<{
+      tags: Array<{ name: string; usage_count: number; last_used: string }>;
+    }>('/market-insights/user-tags');
+  },
+
   getArticleTags: async (articleId: string) => {
     return fetchApi<{
       tags: Array<{ name: string; created_at: string }>;
