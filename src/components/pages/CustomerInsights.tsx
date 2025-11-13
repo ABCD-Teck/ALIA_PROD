@@ -15,6 +15,7 @@ import { Building2, Plus, TrendingUp, TrendingDown, Calendar, User, ExternalLink
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Language, CustomerInsightsTab } from '../../App';
 import * as api from '../../services/api';
+import { CURRENCIES } from '../../contexts/CurrencyContext';
 
 interface CustomerInsightsProps {
   searchQuery: string;
@@ -72,7 +73,7 @@ export function CustomerInsights({ searchQuery, language }: CustomerInsightsProp
   const [dbCustomers, setDbCustomers] = useState<any[]>([]);
   const [loadingCustomers, setLoadingCustomers] = useState(true);
   const [customerLoadError, setCustomerLoadError] = useState<string | null>(null);
-  const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
 
   // News from database state
   const [dbNews, setDbNews] = useState<any[]>([]);
@@ -88,6 +89,24 @@ export function CustomerInsights({ searchQuery, language }: CustomerInsightsProp
   // Interaction detail dialog state
   const [selectedInteraction, setSelectedInteraction] = useState<any | null>(null);
   const [isInteractionDetailOpen, setIsInteractionDetailOpen] = useState(false);
+
+  // Financial statement dialog state
+  const [isFinancialDialogOpen, setIsFinancialDialogOpen] = useState(false);
+  const [editingFinancial, setEditingFinancial] = useState<any | null>(null);
+  const [financialFormData, setFinancialFormData] = useState<any>({
+    fiscal_year: '',
+    revenue: '',
+    net_profit: '',
+    roe: '',
+    debt_ratio: '',
+    currency_id: '',
+    notes: ''
+  });
+  const [savingFinancial, setSavingFinancial] = useState(false);
+  const [financialFormError, setFinancialFormError] = useState<string | null>(null);
+  const [currencies, setCurrencies] = useState<any[]>([]);
+  const [deleteFinancialDialogOpen, setDeleteFinancialDialogOpen] = useState(false);
+  const [financialToDelete, setFinancialToDelete] = useState<any | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -176,8 +195,6 @@ export function CustomerInsights({ searchQuery, language }: CustomerInsightsProp
       debtLabel: '负债率',
       incomeStatus: '收入情况',
       financialIndicators: '财务指标',
-      downloadPdfTitle: '下载客户财报PDF',
-      pdfFileName: '比亚迪 BYD 2024 年度财报PDF文件',
       documentManagement: '文档管理',
       customerInfo: '客户信息 (如工商管理注册)',
       ownershipStructure: '股权结构 (如股东权益说明, UBO)',
@@ -206,7 +223,19 @@ export function CustomerInsights({ searchQuery, language }: CustomerInsightsProp
       interactionDate: '互动日期',
       interactionSubject: '主题',
       interactionDescription: '详细描述',
-      close: '关闭'
+      close: '关闭',
+      addFinancialStatement: '添加财务信息',
+      editFinancialStatement: '编辑财务信息',
+      fiscalYear: '财年',
+      currency: '货币',
+      notesOptional: '备注（可选）',
+      fiscalYearRequired: '请输入财年',
+      actions: '操作',
+      edit: '编辑',
+      deleteFinancialTitle: '确认删除财务信息',
+      deleteFinancialDescription: '您确定要删除 {year} 年的财务信息吗？此操作无法撤销。',
+      deleting: '删除中...',
+      saving: '保存中...'
     },
     en: {
       title: 'Customer Insights',
@@ -267,8 +296,6 @@ export function CustomerInsights({ searchQuery, language }: CustomerInsightsProp
       debtLabel: 'Debt Ratio',
       incomeStatus: 'Income Status',
       financialIndicators: 'Financial Indicators',
-      downloadPdfTitle: 'Download Customer Financial Report PDF',
-      pdfFileName: 'BYD 2024 Annual Financial Report PDF',
       documentManagement: 'Document Management',
       customerInfo: 'Customer Information (e.g., Business Registration)',
       ownershipStructure: 'Ownership Structure (e.g., Shareholder Information, UBO)',
@@ -297,7 +324,19 @@ export function CustomerInsights({ searchQuery, language }: CustomerInsightsProp
       interactionDate: 'Interaction Date',
       interactionSubject: 'Subject',
       interactionDescription: 'Description',
-      close: 'Close'
+      close: 'Close',
+      addFinancialStatement: 'Add Financial Statement',
+      editFinancialStatement: 'Edit Financial Statement',
+      fiscalYear: 'Fiscal Year',
+      currency: 'Currency',
+      notesOptional: 'Notes (Optional)',
+      fiscalYearRequired: 'Please enter fiscal year',
+      actions: 'Actions',
+      edit: 'Edit',
+      deleteFinancialTitle: 'Confirm Delete Financial Statement',
+      deleteFinancialDescription: 'Are you sure you want to delete the financial statement for {year}? This action cannot be undone.',
+      deleting: 'Deleting...',
+      saving: 'Saving...'
     }
   };
 
@@ -567,6 +606,17 @@ export function CustomerInsights({ searchQuery, language }: CustomerInsightsProp
     };
   }, [selectedCustomerId]);
 
+  // Load currencies from context
+  useEffect(() => {
+    const currenciesArray = Object.values(CURRENCIES).map((curr, idx) => ({
+      currency_id: curr.code,
+      code: curr.code,
+      symbol: curr.symbol,
+      name: curr.name
+    }));
+    setCurrencies(currenciesArray);
+  }, []);
+
   // Fetch all customers from database
   useEffect(() => {
     const fetchCustomers = async () => {
@@ -597,12 +647,9 @@ export function CustomerInsights({ searchQuery, language }: CustomerInsightsProp
   useEffect(() => {
     // Priority 1: If URL param is provided, use it
     if (urlCustomerId) {
-      const customerId = parseInt(urlCustomerId, 10);
-      if (!isNaN(customerId)) {
-        setSelectedCustomerId(customerId);
-        setSelectedCompany(`db_${customerId}`);
-        return;
-      }
+      setSelectedCustomerId(urlCustomerId);
+      setSelectedCompany(`db_${urlCustomerId}`);
+      return;
     }
 
     // Priority 2: Set default customer only if none selected and customers are loaded
@@ -612,8 +659,6 @@ export function CustomerInsights({ searchQuery, language }: CustomerInsightsProp
       setSelectedCompany(`db_${firstCustomer.customer_id}`);
     }
   }, [urlCustomerId, dbCustomers, selectedCustomerId]);
-
-  // 过滤搜索结果
   // Filter all companies (mock + database) based on search
 const allCompaniesForDropdown = [
   ...companies,
@@ -708,7 +753,9 @@ const allCompaniesForDropdown = [
 ];
 
   // Get current selected company from the combined list (before any early returns)
-  const company = allCompaniesForDropdown.find(c => c.id === selectedCompany) || allCompaniesForDropdown[0];
+  const company = selectedCompany
+    ? allCompaniesForDropdown.find(c => c.id === selectedCompany)
+    : allCompaniesForDropdown[0];
 
   // Get news from database only (no mock data)
   const allNews = dbNews.map(article => ({
@@ -825,6 +872,7 @@ const allCompaniesForDropdown = [
     const sortedStatements = [...financialStatements].sort(
       (a, b) => Number(b.fiscal_year || 0) - Number(a.fiscal_year || 0)
     );
+    // Latest statement is simply the highest fiscal year
     const latestStatement = sortedStatements[0];
     const currencySymbol =
       (latestStatement && latestStatement.currency_symbol) || (language === 'zh' ? '¥' : '$');
@@ -853,6 +901,7 @@ const allCompaniesForDropdown = [
     };
 
     const annualData = sortedStatements.map((statement) => ({
+      financial_statement_id: statement.statement_id,
       year: statement.fiscal_year,
       revenue: formatCurrencyDisplay(statement.revenue),
       profit: formatCurrencyDisplay(statement.net_profit),
@@ -1070,6 +1119,134 @@ const allCompaniesForDropdown = [
     }
   };
 
+  // Financial statement handlers
+  const handleAddFinancialStatement = () => {
+    setEditingFinancial(null);
+    setFinancialFormData({
+      fiscal_year: '',
+      revenue: '',
+      net_profit: '',
+      roe: '',
+      debt_ratio: '',
+      currency_id: '',
+      notes: ''
+    });
+    setFinancialFormError(null);
+    setIsFinancialDialogOpen(true);
+  };
+
+  const handleEditFinancialStatement = (statement: any) => {
+    setEditingFinancial(statement);
+    // Use the same scale factor as display (1e8 for Chinese, 1e9 for English)
+    const revenueDivider = language === 'zh' ? 1e8 : 1e9;
+    setFinancialFormData({
+      fiscal_year: statement.fiscal_year ? String(statement.fiscal_year) : '',
+      // Convert from raw value to display units (e.g., 99900000000 -> 999)
+      revenue: statement.revenue ? String(Number(statement.revenue) / revenueDivider) : '',
+      net_profit: statement.net_profit ? String(Number(statement.net_profit) / revenueDivider) : '',
+      // Convert decimal to percentage for display in form (0.15 -> 15)
+      roe: statement.roe ? (Number(statement.roe) * 100).toString() : '',
+      debt_ratio: statement.debt_ratio ? (Number(statement.debt_ratio) * 100).toString() : '',
+      currency_id: statement.currency_id || '',
+      notes: statement.notes || ''
+    });
+    setFinancialFormError(null);
+    setIsFinancialDialogOpen(true);
+  };
+
+  const handleSaveFinancialStatement = async () => {
+    if (!selectedCustomerId) {
+      setFinancialFormError(language === 'zh' ? '请先选择客户' : 'Please select a customer');
+      return;
+    }
+
+    if (!financialFormData.fiscal_year.trim()) {
+      setFinancialFormError(t.fiscalYearRequired);
+      return;
+    }
+
+    setSavingFinancial(true);
+    setFinancialFormError(null);
+
+    try {
+      // Use the same scale factor as display (1e8 for Chinese, 1e9 for English)
+      const revenueDivider = language === 'zh' ? 1e8 : 1e9;
+      const data = {
+        customer_id: selectedCustomerId.toString(),
+        fiscal_year: financialFormData.fiscal_year.trim(),
+        // Convert from display units back to raw value (e.g., 999 -> 99900000000)
+        revenue: financialFormData.revenue ? parseFloat(financialFormData.revenue) * revenueDivider : undefined,
+        net_profit: financialFormData.net_profit ? parseFloat(financialFormData.net_profit) * revenueDivider : undefined,
+        // Convert percentage to decimal for storage (15 -> 0.15)
+        roe: financialFormData.roe ? parseFloat(financialFormData.roe) / 100 : undefined,
+        debt_ratio: financialFormData.debt_ratio ? parseFloat(financialFormData.debt_ratio) / 100 : undefined,
+        currency_id: financialFormData.currency_id || undefined,
+        notes: financialFormData.notes.trim() || undefined,
+      };
+
+      if (editingFinancial) {
+        // Update existing
+        const { customer_id, ...updateData } = data;
+        await api.financialStatementsApi.update(editingFinancial.statement_id, updateData);
+      } else {
+        // Create new
+        await api.financialStatementsApi.create(data);
+      }
+
+      // Refresh financial statements
+      const response = await api.financialStatementsApi.getByCustomerId(selectedCustomerId.toString());
+      if (response.data?.statements) {
+        setFinancialStatements(response.data.statements);
+      }
+
+      setIsFinancialDialogOpen(false);
+      setEditingFinancial(null);
+    } catch (error: any) {
+      console.error('Error saving financial statement:', error);
+      setFinancialFormError(error.message || (language === 'zh' ? '保存失败，请稍后重试' : 'Failed to save, please try again'));
+    } finally {
+      setSavingFinancial(false);
+    }
+  };
+
+  const handleDeleteFinancialStatement = async () => {
+    if (!financialToDelete) return;
+
+    try {
+      await api.financialStatementsApi.delete(financialToDelete.statement_id);
+
+      // Refresh financial statements
+      if (selectedCustomerId) {
+        const response = await api.financialStatementsApi.getByCustomerId(selectedCustomerId.toString());
+        if (response.data?.statements) {
+          setFinancialStatements(response.data.statements);
+        }
+      }
+
+      setDeleteFinancialDialogOpen(false);
+      setFinancialToDelete(null);
+    } catch (error) {
+      console.error('Error deleting financial statement:', error);
+    }
+  };
+
+  const handleFinancialDialogChange = (open: boolean) => {
+    setIsFinancialDialogOpen(open);
+    if (!open) {
+      setEditingFinancial(null);
+      setFinancialFormError(null);
+      setFinancialFormData({
+        fiscal_year: '',
+        revenue: '',
+        net_profit: '',
+        roe: '',
+        debt_ratio: '',
+        currency_id: '',
+        notes: ''
+      });
+    }
+  };
+
   const documentCategories = [
     { id: 'customerInfo', label: t.customerInfo },
     { id: 'ownershipStructure', label: t.ownershipStructure },
@@ -1181,8 +1358,7 @@ const allCompaniesForDropdown = [
             // If it's a database customer, update selectedCustomerId
             const selected = allCompaniesForDropdown.find(c => c.id === value);
             if (selected && 'customerId' in selected) {
-              setSelectedCustomerId(selected.customerId);
-              setAnnotationsError(null);
+              navigate(`/customer-insights/${selected.customerId}`);
             } else {
               setSelectedCustomerId(null);
               setDbAnnotations([]);
@@ -1621,8 +1797,14 @@ const allCompaniesForDropdown = [
 
             {/* 财务年度数据 */}
             <Card>
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>{t.financialAnnualData}</CardTitle>
+                {selectedCustomerId && (
+                  <Button onClick={handleAddFinancialStatement} size="sm">
+                    <Plus className="mr-2 h-4 w-4" />
+                    {t.addFinancialStatement}
+                  </Button>
+                )}
               </CardHeader>
               <CardContent>
                 {loadingFinancials ? (
@@ -1646,12 +1828,18 @@ const allCompaniesForDropdown = [
                           <th className="text-left py-3 px-4 font-medium text-gray-600">{t.profit}</th>
                           <th className="text-left py-3 px-4 font-medium text-gray-600">ROE</th>
                           <th className="text-left py-3 px-4 font-medium text-gray-600">{t.debtRatio}</th>
+                          {selectedCustomerId && (
+                            <th className="text-left py-3 px-4 font-medium text-gray-600">{t.actions}</th>
+                          )}
                         </tr>
                       </thead>
                       <tbody>
                         {processedFinancials.annualData.map((item: any, index: number) => {
                           const rowDivider =
                             index !== processedFinancials.annualData.length - 1 ? 'border-b border-gray-100' : '';
+                          // Only the current year (highest fiscal year, which is index 0) can be edited
+                          const isCurrentYear = index === 0;
+
                           return (
                             <tr key={item.year ?? index} className={rowDivider}>
                               <td className="py-3 px-4 text-black">{item.year ?? '—'}</td>
@@ -1659,6 +1847,48 @@ const allCompaniesForDropdown = [
                               <td className="py-3 px-4 text-black">{item.profit ?? '—'}</td>
                               <td className="py-3 px-4 text-black">{item.roe ?? '—'}</td>
                               <td className="py-3 px-4 text-black">{item.debtRatio ?? '—'}</td>
+                              {selectedCustomerId && (
+                                <td className="py-3 px-4">
+                                  {item.financial_statement_id && (
+                                    <div className="flex gap-2">
+                                      {/* Only show Edit button for current year statement */}
+                                      {isCurrentYear && (
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => {
+                                            // Find the original statement from financialStatements
+                                            const originalStatement = financialStatements.find(
+                                              s => s.statement_id === item.financial_statement_id
+                                            );
+                                            if (originalStatement) {
+                                              handleEditFinancialStatement(originalStatement);
+                                            }
+                                          }}
+                                        >
+                                          <Edit className="h-4 w-4" />
+                                        </Button>
+                                      )}
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                          // Find the original statement from financialStatements
+                                          const originalStatement = financialStatements.find(
+                                            s => s.statement_id === item.financial_statement_id
+                                          );
+                                          if (originalStatement) {
+                                            setFinancialToDelete(originalStatement);
+                                            setDeleteFinancialDialogOpen(true);
+                                          }
+                                        }}
+                                      >
+                                        <Trash2 className="h-4 w-4 text-red-500" />
+                                      </Button>
+                                    </div>
+                                  )}
+                                </td>
+                              )}
                             </tr>
                           );
                         })}
@@ -1803,28 +2033,23 @@ const allCompaniesForDropdown = [
                 )}
               </CardContent>
             </Card>
-
-            {/* 下载PDF */}
-            <Card>
-              <CardHeader>
-                <CardTitle>{t.downloadPdfTitle}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between p-3 border rounded-lg">
-                  <span className="text-sm">{t.pdfFileName}</span>
-                  <Button variant="outline" size="sm">
-                    <Download className="mr-2 h-4 w-4" />
-                    {t.download}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
             </TabsContent>
 
             <TabsContent value="interaction" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>{t.latestInteractions}</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle>{t.latestInteractions}</CardTitle>
+                  <Button
+                    variant="teal"
+                    size="sm"
+                    onClick={() => navigate('/interactions/create')}
+                    className="flex items-center gap-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    {language === 'zh' ? '添加互动' : 'Add Interaction'}
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -2432,6 +2657,153 @@ const allCompaniesForDropdown = [
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Financial Statement Dialog */}
+      <Dialog open={isFinancialDialogOpen} onOpenChange={handleFinancialDialogChange}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              {editingFinancial ? t.editFinancialStatement : t.addFinancialStatement}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {financialFormError && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded text-sm text-red-600">
+                {financialFormError}
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">{t.fiscalYear} *</label>
+                <Input
+                  value={financialFormData.fiscal_year}
+                  onChange={(e) => setFinancialFormData({ ...financialFormData, fiscal_year: e.target.value })}
+                  placeholder={language === 'zh' ? '例如: 2024' : 'e.g., 2024'}
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">{t.currency}</label>
+                <Select
+                  value={financialFormData.currency_id}
+                  onValueChange={(value) => setFinancialFormData({ ...financialFormData, currency_id: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={language === 'zh' ? '选择货币' : 'Select currency'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {currencies.map((currency: any) => (
+                      <SelectItem key={currency.currency_id} value={currency.currency_id}>
+                        {currency.code} - {currency.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">
+                  {t.revenue} ({language === 'zh' ? '亿' : 'B'})
+                </label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={financialFormData.revenue}
+                  onChange={(e) => setFinancialFormData({ ...financialFormData, revenue: e.target.value })}
+                  placeholder={language === 'zh' ? '营业收入（亿）' : 'Revenue (Billions)'}
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">
+                  {t.profit} ({language === 'zh' ? '亿' : 'B'})
+                </label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={financialFormData.net_profit}
+                  onChange={(e) => setFinancialFormData({ ...financialFormData, net_profit: e.target.value })}
+                  placeholder={language === 'zh' ? '净利润（亿）' : 'Net Profit (Billions)'}
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">ROE (%)</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={financialFormData.roe}
+                  onChange={(e) => setFinancialFormData({ ...financialFormData, roe: e.target.value })}
+                  placeholder="ROE"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">{t.debtRatio} (%)</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={financialFormData.debt_ratio}
+                  onChange={(e) => setFinancialFormData({ ...financialFormData, debt_ratio: e.target.value })}
+                  placeholder={language === 'zh' ? '负债率' : 'Debt Ratio'}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-2 block">{t.notesOptional}</label>
+              <Textarea
+                value={financialFormData.notes}
+                onChange={(e) => setFinancialFormData({ ...financialFormData, notes: e.target.value })}
+                rows={3}
+                placeholder={language === 'zh' ? '添加备注...' : 'Add notes...'}
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 mt-6">
+            <Button
+              variant="outline"
+              onClick={() => setIsFinancialDialogOpen(false)}
+              disabled={savingFinancial}
+            >
+              {t.cancel}
+            </Button>
+            <Button
+              onClick={handleSaveFinancialStatement}
+              disabled={savingFinancial}
+            >
+              {savingFinancial ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {t.saving}
+                </>
+              ) : (
+                t.save
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Financial Statement Confirmation Dialog */}
+      <AlertDialog open={deleteFinancialDialogOpen} onOpenChange={setDeleteFinancialDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t.deleteFinancialTitle}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {financialToDelete && t.deleteFinancialDescription.replace('{year}', financialToDelete.fiscal_year)}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t.cancelDelete}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteFinancialStatement} className="bg-red-600 hover:bg-red-700">
+              {t.confirmDelete}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

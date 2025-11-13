@@ -286,6 +286,21 @@ export const opportunitiesApi = {
   },
 };
 
+// Calendar API
+export const calendarApi = {
+  getEvents: async (params: { start: string; end: string; view?: string }) => {
+    const queryParams = new URLSearchParams();
+    queryParams.append('start', params.start);
+    queryParams.append('end', params.end);
+    if (params.view) queryParams.append('view', params.view);
+
+    const query = queryParams.toString();
+    return fetchApi<{ events: any[] }>(
+      `/calendar/events${query ? `?${query}` : ''}`
+    );
+  },
+};
+
 // Interactions API
 export const interactionsApi = {
   getAll: async (params?: { search?: string; limit?: number; offset?: number }) => {
@@ -513,6 +528,58 @@ export const financialStatementsApi = {
       statements: any[];
     }>(`/financial-statements/customer/${customerId}`);
   },
+
+  getById: async (id: string) => {
+    return fetchApi<{
+      statement: any;
+    }>(`/financial-statements/${id}`);
+  },
+
+  create: async (data: {
+    customer_id: string;
+    fiscal_year: string;
+    revenue?: number;
+    net_profit?: number;
+    roe?: number;
+    debt_ratio?: number;
+    currency_id?: string;
+    notes?: string;
+  }) => {
+    return fetchApi<{
+      statement: any;
+      message: string;
+    }>('/financial-statements', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  update: async (id: string, data: {
+    fiscal_year?: string;
+    revenue?: number;
+    net_profit?: number;
+    roe?: number;
+    debt_ratio?: number;
+    currency_id?: string;
+    notes?: string;
+  }) => {
+    return fetchApi<{
+      statement: any;
+      message: string;
+    }>(`/financial-statements/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  delete: async (id: string) => {
+    return fetchApi<{
+      message: string;
+      financial_statement_id: string;
+    }>(`/financial-statements/${id}`, {
+      method: 'DELETE',
+    });
+  },
 };
 
 // Authentication API
@@ -571,6 +638,20 @@ export const authApi = {
   logout: async () => {
     clearTokens();
     return { data: { message: 'Logged out successfully' } };
+  },
+
+  updateProfile: async (data: {
+    first_name?: string;
+    last_name?: string;
+    email?: string;
+  }) => {
+    return fetchApi<{
+      user: any;
+      message: string;
+    }>('/auth/me', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
   },
 };
 
@@ -687,6 +768,33 @@ export const marketInsightsApi = {
     }>(`/market-insights/article/${articleId}/translation`, {
       method: 'PATCH',
       body: JSON.stringify(translations),
+    });
+  },
+
+  // Article tag management
+  getArticleTags: async (articleId: string) => {
+    return fetchApi<{
+      tags: Array<{ name: string; created_at: string }>;
+    }>(`/market-insights/article/${articleId}/tags`);
+  },
+
+  addArticleTag: async (articleId: string, tagName: string) => {
+    return fetchApi<{
+      success: boolean;
+      tag: { name: string; created_at?: string };
+      message?: string;
+    }>(`/market-insights/article/${articleId}/tags`, {
+      method: 'POST',
+      body: JSON.stringify({ tagName }),
+    });
+  },
+
+  removeArticleTag: async (articleId: string, tagName: string) => {
+    return fetchApi<{
+      success: boolean;
+      message: string;
+    }>(`/market-insights/article/${articleId}/tags/${encodeURIComponent(tagName)}`, {
+      method: 'DELETE',
     });
   },
 };

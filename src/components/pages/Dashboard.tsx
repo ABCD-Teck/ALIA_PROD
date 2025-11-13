@@ -344,12 +344,22 @@ export function Dashboard({ searchQuery, language }: DashboardProps) {
                   <tr
                     key={customer.customer_id}
                     className="border-b hover:bg-green-50 cursor-pointer transition-colors"
-                    onDoubleClick={() => {
+                    onClick={() => {
                       navigate(`/customer-insights/${customer.customer_id}`);
                     }}
                   >
-                    <td className="py-4 px-4 text-sm text-gray-900">{startIndex + index}</td>
-                    <td className="py-4 px-4 text-sm font-medium text-gray-900">{customer.company_name}</td>
+                    <td className="py-4 px-4 text-sm text-gray-900">{startIndex + index + 1}</td>
+                    <td className="py-4 px-4 text-sm font-medium">
+                      <span
+                        className="text-teal-600 hover:text-teal-800 hover:underline cursor-pointer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/customer-insights/${customer.customer_id}`);
+                        }}
+                      >
+                        {customer.company_name}
+                      </span>
+                    </td>
                     <td className="py-4 px-4 text-sm text-gray-600">
                       {customer.industry_name || '-'}
                     </td>

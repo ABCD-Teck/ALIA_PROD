@@ -173,6 +173,12 @@ export function TaskDetail({ language }: TaskDetailProps) {
 
       if (response.data) {
         const task = response.data;
+        // Build assignee display name from user details if available
+        let assignedToDisplay = task.assigned_to || '';
+        if (task.assigned_user_first_name || task.assigned_user_last_name) {
+          assignedToDisplay = `${task.assigned_user_first_name || ''} ${task.assigned_user_last_name || ''}`.trim();
+        }
+
         setFormData({
           subject: task.subject || '',
           description: task.description || '',
@@ -181,7 +187,7 @@ export function TaskDetail({ language }: TaskDetailProps) {
           status: task.status || 'NEW',
           customer_id: task.customer_id?.toString() || '',
           contact_id: task.contact_id?.toString() || '',
-          assigned_to: task.assigned_to || ''
+          assigned_to: assignedToDisplay
         });
       }
     } catch (err) {

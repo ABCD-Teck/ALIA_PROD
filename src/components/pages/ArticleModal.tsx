@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../ui/sheet';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import {
@@ -141,34 +141,35 @@ export function ArticleModal({ isOpen, onClose, articleId, language }: ArticleMo
   if (!isOpen) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-bold pr-8">
+    <Sheet open={isOpen} onOpenChange={onClose}>
+      <SheetContent className="max-w-4xl max-h-[90vh] flex flex-col overflow-hidden sm:max-w-4xl w-full">
+        <SheetHeader className="flex-shrink-0">
+          <SheetTitle className="text-xl font-bold pr-8">
             {loading ? t.loading : (
               language === 'zh' && article?.title_zh && article?.title_zh.trim() && article?.title_zh !== article?.title_en
                 ? article?.title_zh
                 : article?.title_en
             )}
-          </DialogTitle>
-        </DialogHeader>
+          </SheetTitle>
+        </SheetHeader>
 
-        {loading && (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-8 w-8 animate-spin text-teal-custom" />
-            <span className="ml-3 text-gray-600">{t.loading}</span>
-          </div>
-        )}
+        <div className="flex-1 overflow-y-auto min-h-0">
+          {loading && (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-teal-custom" />
+              <span className="ml-3 text-gray-600">{t.loading}</span>
+            </div>
+          )}
 
-        {error && (
-          <div className="p-6 text-red-600 text-center">
-            <p className="font-semibold">{t.error}</p>
-            <p className="text-sm">{error}</p>
-          </div>
-        )}
+          {error && (
+            <div className="p-6 text-red-600 text-center">
+              <p className="font-semibold">{t.error}</p>
+              <p className="text-sm">{error}</p>
+            </div>
+          )}
 
-        {article && !loading && (
-          <div className="space-y-6">
+          {article && !loading && (
+            <div className="space-y-6 pb-4">
             {/* Article Title - Translated */}
             <div>
               <h1 className="text-2xl font-bold text-gray-900 mb-4">
@@ -311,8 +312,9 @@ export function ArticleModal({ isOpen, onClose, articleId, language }: ArticleMo
               </div>
             </div>
           </div>
-        )}
-      </DialogContent>
-    </Dialog>
+          )}
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }

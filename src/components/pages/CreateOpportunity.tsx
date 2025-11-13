@@ -313,14 +313,14 @@ export function CreateOpportunity({ language }: CreateOpportunityProps) {
         <CardContent className="space-y-6">
           {/* Row 1: Customer and Opportunity Name */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="customer">{t.customer} *</Label>
+            <div className="space-y-2 p-3 bg-teal-50 border-2 border-teal-300 rounded-lg transition-all hover:border-teal-400 hover:shadow-md">
+              <Label htmlFor="customer" className="text-teal-900 font-semibold">{t.customer} *</Label>
               <Select
                 value={formData.customer_id}
                 onValueChange={(value) => handleInputChange('customer_id', value)}
                 disabled={isLoading}
               >
-                <SelectTrigger>
+                <SelectTrigger className="bg-white border-teal-200 hover:border-teal-400 focus:ring-2 focus:ring-teal-400">
                   <SelectValue placeholder={t.customerPlaceholder} />
                 </SelectTrigger>
                 <SelectContent>

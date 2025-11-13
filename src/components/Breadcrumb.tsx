@@ -85,24 +85,40 @@ export function Breadcrumb({ language }: BreadcrumbProps) {
 
     // Handle detail pages (with IDs in URL)
     if (path.match(/^\/opportunities\/[^/]+$/) && !path.includes('/create') && !path.includes('/archived')) {
+      // Make the previous last item clickable
+      if (breadcrumbs.length > 0) {
+        breadcrumbs[breadcrumbs.length - 1].isClickable = true;
+      }
       breadcrumbs.push({
         path: path,
         label: { zh: '商机详情', en: 'Opportunity Details' },
         isClickable: false
       });
     } else if (path.match(/^\/interactions\/[^/]+$/) && !path.includes('/create') && !path.includes('/archived')) {
+      // Make the previous last item clickable
+      if (breadcrumbs.length > 0) {
+        breadcrumbs[breadcrumbs.length - 1].isClickable = true;
+      }
       breadcrumbs.push({
         path: path,
         label: { zh: '互动详情', en: 'Interaction Details' },
         isClickable: false
       });
     } else if (path.match(/^\/tasks\/\d+$/)) {
+      // Make the previous last item clickable
+      if (breadcrumbs.length > 0) {
+        breadcrumbs[breadcrumbs.length - 1].isClickable = true;
+      }
       breadcrumbs.push({
         path: path,
         label: { zh: '任务详情', en: 'Task Details' },
         isClickable: false
       });
     } else if (path.match(/^\/contacts\/\d+$/)) {
+      // Make the previous last item clickable
+      if (breadcrumbs.length > 0) {
+        breadcrumbs[breadcrumbs.length - 1].isClickable = true;
+      }
       breadcrumbs.push({
         path: path,
         label: { zh: '联系人详情', en: 'Contact Details' },
