@@ -195,8 +195,8 @@ router.get('/articles', authenticateToken, async (req, res) => {
         AND EXISTS (
           SELECT 1
           FROM user_article_tags uat
-          WHERE uat.article_id = na.news_id
-          AND uat.user_id = $${paramCount}
+          WHERE uat.article_id = na.news_id::VARCHAR
+          AND uat.user_id = $${paramCount}::VARCHAR
           AND uat.tag_name = $${paramCount + 1}
         )`;
       queryParams.push(userId, custom_tag);
