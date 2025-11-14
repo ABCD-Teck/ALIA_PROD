@@ -901,7 +901,7 @@ const allCompaniesForDropdown = [
     };
 
     const annualData = sortedStatements.map((statement) => ({
-      financial_statement_id: statement.statement_id,
+      financial_statement_id: statement.financial_statement_id,
       year: statement.fiscal_year,
       revenue: formatCurrencyDisplay(statement.revenue),
       profit: formatCurrencyDisplay(statement.net_profit),
@@ -1187,7 +1187,7 @@ const allCompaniesForDropdown = [
       if (editingFinancial) {
         // Update existing
         const { customer_id, ...updateData } = data;
-        await api.financialStatementsApi.update(editingFinancial.statement_id, updateData);
+        await api.financialStatementsApi.update(editingFinancial.financial_statement_id, updateData);
       } else {
         // Create new
         await api.financialStatementsApi.create(data);
@@ -1213,7 +1213,7 @@ const allCompaniesForDropdown = [
     if (!financialToDelete) return;
 
     try {
-      await api.financialStatementsApi.delete(financialToDelete.statement_id);
+      await api.financialStatementsApi.delete(financialToDelete.financial_statement_id);
 
       // Refresh financial statements
       if (selectedCustomerId) {
@@ -1876,7 +1876,7 @@ const allCompaniesForDropdown = [
                                           onClick={() => {
                                             // Find the original statement from financialStatements
                                             const originalStatement = financialStatements.find(
-                                              s => s.statement_id === item.financial_statement_id
+                                              s => s.financial_statement_id === item.financial_statement_id
                                             );
                                             if (originalStatement) {
                                               handleEditFinancialStatement(originalStatement);
@@ -1892,7 +1892,7 @@ const allCompaniesForDropdown = [
                                         onClick={() => {
                                           // Find the original statement from financialStatements
                                           const originalStatement = financialStatements.find(
-                                            s => s.statement_id === item.financial_statement_id
+                                            s => s.financial_statement_id === item.financial_statement_id
                                           );
                                           if (originalStatement) {
                                             setFinancialToDelete(originalStatement);
