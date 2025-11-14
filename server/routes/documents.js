@@ -33,11 +33,28 @@ const upload = multer({
   },
   fileFilter: (req, file, cb) => {
     // Allow common document types
-    const allowedTypes = /pdf|doc|docx|xls|xlsx|ppt|pptx|txt|csv|jpg|jpeg|png|zip/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
+    const allowedExtensions = /\.(pdf|doc|docx|xls|xlsx|ppt|pptx|txt|csv|jpg|jpeg|png|zip)$/i;
+    const allowedMimeTypes = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-powerpoint',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'text/plain',
+      'text/csv',
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'application/zip',
+      'application/x-zip-compressed'
+    ];
 
-    if (extname && mimetype) {
+    const hasValidExtension = allowedExtensions.test(file.originalname.toLowerCase());
+    const hasValidMimeType = allowedMimeTypes.includes(file.mimetype);
+
+    if (hasValidExtension && hasValidMimeType) {
       return cb(null, true);
     } else {
       cb(new Error('Invalid file type. Allowed types: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT, CSV, JPG, PNG, ZIP'));

@@ -1266,8 +1266,22 @@ const allCompaniesForDropdown = [
   const handleFileUpload = async (categoryId: string, files: FileList | null) => {
     if (!files || !selectedCustomerId) return;
 
+    // Client-side validation
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    const filesArray = Array.from(files);
+
+    // Check file sizes
+    const oversizedFiles = filesArray.filter(file => file.size > MAX_FILE_SIZE);
+    if (oversizedFiles.length > 0) {
+      const fileNames = oversizedFiles.map(f => f.name).join(', ');
+      alert(language === 'zh'
+        ? `文件过大（超过10MB）：${fileNames}`
+        : `Files too large (exceeds 10MB): ${fileNames}`);
+      return;
+    }
+
     try {
-      const uploadPromises = Array.from(files).map(async (file) => {
+      const uploadPromises = filesArray.map(async (file) => {
         const response = await api.documentsApi.upload(
           file,
           selectedCustomerId.toString(),
@@ -1293,7 +1307,10 @@ const allCompaniesForDropdown = [
       alert(language === 'zh' ? '文件上传成功！' : 'Files uploaded successfully!');
     } catch (error) {
       console.error('Error uploading files:', error);
-      alert(language === 'zh' ? '文件上传失败' : 'Failed to upload files');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(language === 'zh'
+        ? `文件上传失败：${errorMessage}`
+        : `Failed to upload files: ${errorMessage}`);
     }
   };
 
