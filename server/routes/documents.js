@@ -48,15 +48,27 @@ const upload = multer({
       'image/jpg',
       'image/png',
       'application/zip',
-      'application/x-zip-compressed'
+      'application/x-zip-compressed',
+      'application/octet-stream' // Generic binary file type - allow for Office docs
     ];
 
     const hasValidExtension = allowedExtensions.test(file.originalname.toLowerCase());
     const hasValidMimeType = allowedMimeTypes.includes(file.mimetype);
 
-    if (hasValidExtension && hasValidMimeType) {
-      return cb(null, true);
+    // Primary validation: extension must match
+    // Secondary validation: if MIME type is available, it should be in allowed list
+    // This allows Office documents that might be detected as application/octet-stream
+    if (hasValidExtension) {
+      if (hasValidMimeType || file.mimetype === 'application/octet-stream') {
+        console.log(`File accepted: ${file.originalname} (${file.mimetype})`);
+        return cb(null, true);
+      } else {
+        console.warn(`File rejected due to MIME type: ${file.originalname} (${file.mimetype})`);
+        cb(new Error(`Invalid file MIME type: ${file.mimetype}. File: ${file.originalname}`));
+        return;
+      }
     } else {
+      console.warn(`File rejected due to extension: ${file.originalname}`);
       cb(new Error('Invalid file type. Allowed types: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT, CSV, JPG, PNG, ZIP'));
     }
   }
