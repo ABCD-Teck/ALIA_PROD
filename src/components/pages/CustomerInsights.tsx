@@ -1854,8 +1854,6 @@ const allCompaniesForDropdown = [
                         {processedFinancials.annualData.map((item: any, index: number) => {
                           const rowDivider =
                             index !== processedFinancials.annualData.length - 1 ? 'border-b border-gray-100' : '';
-                          // Only the current year (highest fiscal year, which is index 0) can be edited
-                          const isCurrentYear = index === 0;
 
                           return (
                             <tr key={item.year ?? index} className={rowDivider}>
@@ -1868,24 +1866,21 @@ const allCompaniesForDropdown = [
                                 <td className="py-3 px-4">
                                   {item.financial_statement_id && (
                                     <div className="flex gap-2">
-                                      {/* Only show Edit button for current year statement */}
-                                      {isCurrentYear && (
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          onClick={() => {
-                                            // Find the original statement from financialStatements
-                                            const originalStatement = financialStatements.find(
-                                              s => s.financial_statement_id === item.financial_statement_id
-                                            );
-                                            if (originalStatement) {
-                                              handleEditFinancialStatement(originalStatement);
-                                            }
-                                          }}
-                                        >
-                                          <Edit className="h-4 w-4" />
-                                        </Button>
-                                      )}
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                          // Find the original statement from financialStatements
+                                          const originalStatement = financialStatements.find(
+                                            s => s.financial_statement_id === item.financial_statement_id
+                                          );
+                                          if (originalStatement) {
+                                            handleEditFinancialStatement(originalStatement);
+                                          }
+                                        }}
+                                      >
+                                        <Edit className="h-4 w-4" />
+                                      </Button>
                                       <Button
                                         variant="ghost"
                                         size="sm"
