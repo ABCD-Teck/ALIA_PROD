@@ -7,7 +7,7 @@ import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../ui/dialog';
-import { Calendar, Loader2, Edit, Archive, Save, X } from 'lucide-react';
+import { Calendar, Loader2, Edit, Archive, Save, X, Trash2 } from 'lucide-react';
 import { Language } from '../../App';
 import * as api from '../../services/api';
 
@@ -148,6 +148,33 @@ export function Interactions({ searchQuery, language }: InteractionsProps) {
     } catch (err) {
       console.error('Error archiving interaction:', err);
       alert(language === 'zh' ? '归档失败' : 'Failed to archive');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleDelete = async (interactionId: string) => {
+    if (!window.confirm(t.confirmDelete)) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const response = await api.interactionsApi.delete(interactionId);
+      if (response.data) {
+        // Remove from local state
+        setPastInteractions(prev => prev.filter(int => int.interaction_id !== interactionId));
+        setFutureInteractions(prev => prev.filter(int => int.interaction_id !== interactionId));
+        alert(language === 'zh' ? '删除成功' : 'Deleted successfully');
+      } else {
+        const errorMsg = response.error || 'Unknown error';
+        const detailMsg = (response as any).detail || '';
+        alert((language === 'zh' ? '删除失败' : 'Failed to delete') + ': ' + errorMsg + (detailMsg ? '\n' + detailMsg : ''));
+        console.error('Delete error response:', response);
+      }
+    } catch (err) {
+      console.error('Error deleting interaction:', err);
+      alert(language === 'zh' ? '删除失败' : 'Failed to delete');
     } finally {
       setIsDeleting(false);
     }
@@ -422,6 +449,16 @@ export function Interactions({ searchQuery, language }: InteractionsProps) {
                             <Archive className="h-3 w-3 mr-1" />
                             {isDeleting ? t.archiving : t.archive}
                           </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 border-red-300 hover:bg-red-50"
+                            onClick={() => handleDelete(activity.id)}
+                            disabled={isDeleting}
+                          >
+                            <Trash2 className="h-3 w-3 mr-1" />
+                            {isDeleting ? t.deleting : t.delete}
+                          </Button>
                         </>
                       )}
                     </div>
@@ -524,6 +561,16 @@ export function Interactions({ searchQuery, language }: InteractionsProps) {
                           >
                             <Archive className="h-3 w-3 mr-1" />
                             {isDeleting ? t.archiving : t.archive}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 border-red-300 hover:bg-red-50"
+                            onClick={() => handleDelete(activity.id)}
+                            disabled={isDeleting}
+                          >
+                            <Trash2 className="h-3 w-3 mr-1" />
+                            {isDeleting ? t.deleting : t.delete}
                           </Button>
                         </>
                       )}

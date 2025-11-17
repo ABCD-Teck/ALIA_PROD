@@ -108,6 +108,10 @@ export function CustomerInsights({ searchQuery, language }: CustomerInsightsProp
   const [deleteFinancialDialogOpen, setDeleteFinancialDialogOpen] = useState(false);
   const [financialToDelete, setFinancialToDelete] = useState<any | null>(null);
 
+  // Delete customer state
+  const [deleteCustomerDialogOpen, setDeleteCustomerDialogOpen] = useState(false);
+  const [deletingCustomer, setDeletingCustomer] = useState(false);
+
   useEffect(() => {
     if (typeof window === 'undefined') {
       return;
@@ -234,6 +238,8 @@ export function CustomerInsights({ searchQuery, language }: CustomerInsightsProp
       edit: '编辑',
       deleteFinancialTitle: '确认删除财务信息',
       deleteFinancialDescription: '您确定要删除 {year} 年的财务信息吗？此操作无法撤销。',
+      deleteCustomerTitle: '确认删除客户',
+      deleteCustomerDescription: '您确定要删除客户 "{customerName}" 吗？此操作将删除所有相关数据（包括互动、文档和财务信息），且无法撤销。',
       deleting: '删除中...',
       saving: '保存中...'
     },
@@ -335,6 +341,8 @@ export function CustomerInsights({ searchQuery, language }: CustomerInsightsProp
       edit: 'Edit',
       deleteFinancialTitle: 'Confirm Delete Financial Statement',
       deleteFinancialDescription: 'Are you sure you want to delete the financial statement for {year}? This action cannot be undone.',
+      deleteCustomerTitle: 'Confirm Delete Customer',
+      deleteCustomerDescription: 'Are you sure you want to delete customer "{customerName}"? This will delete all related data (including interactions, documents, and financial information) and cannot be undone.',
       deleting: 'Deleting...',
       saving: 'Saving...'
     }
@@ -1230,6 +1238,30 @@ const allCompaniesForDropdown = [
     }
   };
 
+  const handleDeleteCustomer = async () => {
+    if (!selectedCustomerId) return;
+
+    setDeletingCustomer(true);
+    try {
+      await api.customersApi.delete(selectedCustomerId.toString());
+
+      // Close dialog and reset state
+      setDeleteCustomerDialogOpen(false);
+      setSelectedCustomerId(null);
+
+      // Refresh customer list
+      await loadCustomers();
+
+      // Navigate back to customer insights without a selected customer
+      navigate('/customer-insights');
+    } catch (error) {
+      console.error('Error deleting customer:', error);
+      alert(language === 'zh' ? '删除客户失败，请稍后重试' : 'Failed to delete customer, please try again');
+    } finally {
+      setDeletingCustomer(false);
+    }
+  };
+
   const handleFinancialDialogChange = (open: boolean) => {
     setIsFinancialDialogOpen(open);
     if (!open) {
@@ -1462,6 +1494,15 @@ const allCompaniesForDropdown = [
                   >
                     <Edit className="mr-2 h-4 w-4" />
                     {t.editCustomer}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setDeleteCustomerDialogOpen(true)}
+                    disabled={!selectedCustomerId}
+                    className="text-destructive hover:bg-destructive/10"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    {t.delete}
                   </Button>
                 </div>
               </div>
@@ -2812,6 +2853,30 @@ const allCompaniesForDropdown = [
             <AlertDialogCancel>{t.cancelDelete}</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteFinancialStatement} className="bg-red-600 hover:bg-red-700">
               {t.confirmDelete}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Customer Confirmation Dialog */}
+      <AlertDialog open={deleteCustomerDialogOpen} onOpenChange={setDeleteCustomerDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t.deleteCustomerTitle}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {selectedCustomerId && t.deleteCustomerDescription.replace('{customerName}',
+                dbCustomers.find(c => c.customer_id === selectedCustomerId)?.company_name || ''
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingCustomer}>{t.cancelDelete}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteCustomer}
+              disabled={deletingCustomer}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {deletingCustomer ? t.deleting : t.confirmDelete}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
