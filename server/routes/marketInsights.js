@@ -92,7 +92,6 @@ router.get('/articles', authenticateToken, async (req, res) => {
     const {
       bucket,
       region,
-      importance,
       company,
       search,
       tag_code, // NEW: Support for bucket tag filtering
@@ -112,7 +111,6 @@ router.get('/articles', authenticateToken, async (req, res) => {
         na.source,
         na.summary_en,
         na.summary_zh,
-        na.importance,
         na.imp_reason,
         na.top_bucket,
         na.top_bucket_score,
@@ -124,15 +122,32 @@ router.get('/articles', authenticateToken, async (req, res) => {
         b.name as bucket_name,
         b.description as bucket_description,
         c.name as company_name,
-        c.ticker as company_ticker
+        c.ticker as company_ticker,
+        COALESCE(like_counts.like_count, 0) as likes,
+        CASE WHEN user_likes.id IS NOT NULL THEN true ELSE false END as is_liked,
+        CASE WHEN user_bookmarks.id IS NOT NULL THEN true ELSE false END as is_bookmarked
       FROM news_article na
       LEFT JOIN bucket b ON na.bucket_id = b.bucket_id
       LEFT JOIN company c ON na.company_id = c.company_id
+      LEFT JOIN (
+        SELECT article_id, COUNT(*) as like_count
+        FROM user_article_reactions
+        WHERE reaction_type = 'like'
+        GROUP BY article_id
+      ) like_counts ON na.news_id::text = like_counts.article_id
+      LEFT JOIN user_article_reactions user_likes
+        ON na.news_id::text = user_likes.article_id
+        AND user_likes.user_id = $1::varchar
+        AND user_likes.reaction_type = 'like'
+      LEFT JOIN user_article_reactions user_bookmarks
+        ON na.news_id::text = user_bookmarks.article_id
+        AND user_bookmarks.user_id = $1::varchar
+        AND user_bookmarks.reaction_type = 'bookmark'
       WHERE na.has_text = true
     `;
 
-    const queryParams = [];
-    let paramCount = 1;
+    const queryParams = [userId]; // userId is $1 for reaction JOINs
+    let paramCount = 2; // Start from 2 since $1 is userId
 
     // Filter by bucket
     if (bucket) {
@@ -145,24 +160,14 @@ router.get('/articles', authenticateToken, async (req, res) => {
     if (region) {
       const dbRegions = getFrontendRegionDbValues(region);
       // Create a comprehensive WHERE clause that checks primary_region and regions array
-      const regionConditions = dbRegions.map(() =>
-        `(na.primary_region = $${paramCount} OR $${paramCount} = ANY(na.regions))`
-      ).join(' OR ');
-
-      query += ` AND (${regionConditions})`;
-
-      // Add all database region values as parameters
-      dbRegions.forEach(dbRegion => {
+      const regionConditions = dbRegions.map((dbRegion) => {
+        const currentParam = paramCount;
         queryParams.push(dbRegion);
         paramCount++;
-      });
-    }
+        return `(na.primary_region = $${currentParam} OR $${currentParam} = ANY(na.regions))`;
+      }).join(' OR ');
 
-    // Filter by importance
-    if (importance) {
-      query += ` AND na.importance >= $${paramCount}`;
-      queryParams.push(parseInt(importance));
-      paramCount++;
+      query += ` AND (${regionConditions})`;
     }
 
     // Filter by company
@@ -241,7 +246,6 @@ router.get('/articles', authenticateToken, async (req, res) => {
       publishTime: new Date(article.published_at).toLocaleString('sv-SE').replace('T', ' ').substring(0, 19),
       url: article.url,
       category: bucketToCategory[article.top_bucket] || 'industry',
-      importance: article.importance || 3,
       imp_reason: article.imp_reason,
       bucket: article.top_bucket,
       bucket_score: article.top_bucket_score,
@@ -252,9 +256,9 @@ router.get('/articles', authenticateToken, async (req, res) => {
       keywords: article.keywords,
       company_name: article.company_name,
       company_ticker: article.company_ticker,
-      likes: 0,
-      isLiked: false,
-      isBookmarked: false
+      likes: parseInt(article.likes) || 0,
+      isLiked: article.is_liked || false,
+      isBookmarked: article.is_bookmarked || false
     }));
 
     // Debug logging: Check Chinese content availability
@@ -283,8 +287,7 @@ router.get('/buckets', authenticateToken, async (req, res) => {
         b.name,
         b.description,
         b.keywords,
-        COUNT(na.news_id) as article_count,
-        AVG(na.importance) as avg_importance
+        COUNT(na.news_id) as article_count
       FROM bucket b
       LEFT JOIN news_article na ON b.bucket_id = na.bucket_id AND na.has_text = true
       WHERE b.active = true
@@ -300,7 +303,6 @@ router.get('/buckets', authenticateToken, async (req, res) => {
       description: bucket.description,
       keywords: bucket.keywords,
       article_count: parseInt(bucket.article_count),
-      avg_importance: parseFloat(bucket.avg_importance) || 0,
       category: bucketToCategory[bucket.name] || 'industry'
     }));
 
@@ -356,7 +358,6 @@ router.get('/article/:id', authenticateToken, async (req, res) => {
       publishTime: new Date(article.published_at).toLocaleString('sv-SE').replace('T', ' ').substring(0, 19),
       url: article.url,
       category: bucketToCategory[article.top_bucket] || 'industry',
-      importance: article.importance,
       imp_reason: article.imp_reason,
       bucket: article.top_bucket,
       bucket_name: article.bucket_name,
@@ -703,16 +704,14 @@ router.get('/countries', authenticateToken, async (req, res) => {
 
     if (region && region !== 'all') {
       const dbRegions = getFrontendRegionDbValues(region);
-      const regionConditions = dbRegions.map(() =>
-        `(na.primary_region = $${paramCount} OR $${paramCount} = ANY(na.regions))`
-      ).join(' OR ');
-
-      query += ` AND (${regionConditions})`;
-
-      dbRegions.forEach(dbRegion => {
+      const regionConditions = dbRegions.map((dbRegion) => {
+        const currentParam = paramCount;
         queryParams.push(dbRegion);
         paramCount++;
-      });
+        return `(na.primary_region = $${currentParam} OR $${currentParam} = ANY(na.regions))`;
+      }).join(' OR ');
+
+      query += ` AND (${regionConditions})`;
     }
 
     query += `
@@ -754,7 +753,6 @@ router.get('/customer/:customerName', authenticateToken, async (req, res) => {
         na.source,
         na.summary_en,
         na.summary_zh,
-        na.importance,
         na.imp_reason,
         na.top_bucket,
         na.primary_region,
@@ -803,7 +801,6 @@ router.get('/customer/:customerName', authenticateToken, async (req, res) => {
       publishTime: new Date(article.published_at).toLocaleString('sv-SE').replace('T', ' ').substring(0, 19),
       url: article.url,
       category: bucketToCategory[article.top_bucket] || 'industry',
-      importance: article.importance || 3,
       imp_reason: article.imp_reason,
       bucket: article.top_bucket,
       bucket_name: article.bucket_name,
@@ -1019,6 +1016,154 @@ router.delete('/article/:articleId/tags/:tagName', authenticateToken, async (req
   } catch (error) {
     console.error('[Market Insights] Error removing article tag:', error);
     res.status(500).json({ error: 'Failed to remove article tag', message: error.message });
+  }
+});
+
+// ========================================
+// Article Reactions (Like/Bookmark) Routes
+// ========================================
+
+// Toggle like on an article
+router.post('/articles/:articleId/like', authenticateToken, async (req, res) => {
+  try {
+    const { articleId } = req.params;
+    const userId = req.user.user_id;
+
+    // Check if user already liked the article
+    const checkQuery = `
+      SELECT id FROM user_article_reactions
+      WHERE user_id = $1 AND article_id = $2 AND reaction_type = 'like'
+    `;
+    const checkResult = await miaPool.query(checkQuery, [userId, articleId]);
+
+    if (checkResult.rows.length > 0) {
+      // Unlike: Remove the like
+      await miaPool.query(
+        'DELETE FROM user_article_reactions WHERE user_id = $1 AND article_id = $2 AND reaction_type = $3',
+        [userId, articleId, 'like']
+      );
+
+      // Get updated like count
+      const countResult = await miaPool.query(
+        'SELECT COUNT(*) as count FROM user_article_reactions WHERE article_id = $1 AND reaction_type = $2',
+        [articleId, 'like']
+      );
+
+      res.json({
+        success: true,
+        isLiked: false,
+        likes: parseInt(countResult.rows[0].count)
+      });
+    } else {
+      // Like: Add the like
+      await miaPool.query(
+        'INSERT INTO user_article_reactions (user_id, article_id, reaction_type) VALUES ($1, $2, $3)',
+        [userId, articleId, 'like']
+      );
+
+      // Get updated like count
+      const countResult = await miaPool.query(
+        'SELECT COUNT(*) as count FROM user_article_reactions WHERE article_id = $1 AND reaction_type = $2',
+        [articleId, 'like']
+      );
+
+      res.json({
+        success: true,
+        isLiked: true,
+        likes: parseInt(countResult.rows[0].count)
+      });
+    }
+  } catch (error) {
+    console.error('[Market Insights] Error toggling like:', error);
+    res.status(500).json({ error: 'Failed to toggle like', message: error.message });
+  }
+});
+
+// Toggle bookmark on an article
+router.post('/articles/:articleId/bookmark', authenticateToken, async (req, res) => {
+  try {
+    const { articleId } = req.params;
+    const userId = req.user.user_id;
+
+    // Check if user already bookmarked the article
+    const checkQuery = `
+      SELECT id FROM user_article_reactions
+      WHERE user_id = $1 AND article_id = $2 AND reaction_type = 'bookmark'
+    `;
+    const checkResult = await miaPool.query(checkQuery, [userId, articleId]);
+
+    if (checkResult.rows.length > 0) {
+      // Unbookmark: Remove the bookmark
+      await miaPool.query(
+        'DELETE FROM user_article_reactions WHERE user_id = $1 AND article_id = $2 AND reaction_type = $3',
+        [userId, articleId, 'bookmark']
+      );
+
+      res.json({
+        success: true,
+        isBookmarked: false
+      });
+    } else {
+      // Bookmark: Add the bookmark
+      await miaPool.query(
+        'INSERT INTO user_article_reactions (user_id, article_id, reaction_type) VALUES ($1, $2, $3)',
+        [userId, articleId, 'bookmark']
+      );
+
+      res.json({
+        success: true,
+        isBookmarked: true
+      });
+    }
+  } catch (error) {
+    console.error('[Market Insights] Error toggling bookmark:', error);
+    res.status(500).json({ error: 'Failed to toggle bookmark', message: error.message });
+  }
+});
+
+// Get user's bookmarked articles
+router.get('/bookmarks', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.user_id;
+    const { limit = 50, offset = 0 } = req.query;
+
+    const query = `
+      SELECT
+        na.news_id as id,
+        na.title,
+        na.url,
+        na.published_at,
+        na.source,
+        na.summary_en,
+        na.summary_zh,
+        na.top_bucket as bucket,
+        na.top_bucket_score,
+        uar.created_at as bookmarked_at,
+        (SELECT COUNT(*) FROM user_article_reactions WHERE article_id = na.news_id AND reaction_type = 'like') as likes
+      FROM user_article_reactions uar
+      JOIN news_article na ON uar.article_id = na.news_id
+      WHERE uar.user_id = $1 AND uar.reaction_type = 'bookmark'
+      ORDER BY uar.created_at DESC
+      LIMIT $2 OFFSET $3
+    `;
+
+    const result = await miaPool.query(query, [userId, limit, offset]);
+
+    // Get total count
+    const countResult = await miaPool.query(
+      'SELECT COUNT(*) as total FROM user_article_reactions WHERE user_id = $1 AND reaction_type = $2',
+      [userId, 'bookmark']
+    );
+
+    res.json({
+      articles: result.rows,
+      total: parseInt(countResult.rows[0].total),
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+  } catch (error) {
+    console.error('[Market Insights] Error fetching bookmarks:', error);
+    res.status(500).json({ error: 'Failed to fetch bookmarks', message: error.message });
   }
 });
 

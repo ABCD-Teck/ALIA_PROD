@@ -342,8 +342,7 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
                       bucket.name === 'Rural & Agri / Utilities' ? '农村农业/公用事业' :
                       bucket.name, // fallback to English name
             label_en: bucket.name,
-            article_count: bucket.article_count,
-            avg_importance: bucket.avg_importance
+            article_count: bucket.article_count
           }))
         ];
 
@@ -429,7 +428,6 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
         search: searchTerms,
         tag_code: tagCode, // NEW: Use tag_code instead of adding to search
         custom_tag: customTag, // NEW: Filter by custom user tags
-        importance: 1, // Minimum importance to ensure quality
         limit: limit,
         offset: currentOffset
       });
@@ -446,13 +444,8 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
           });
         }
 
-        // Sort by importance (descending) then by publish time (descending)
+        // Sort by publish time (descending - newer first)
         articles.sort((a: any, b: any) => {
-          // First sort by importance (higher importance first)
-          if (b.importance !== a.importance) {
-            return b.importance - a.importance;
-          }
-          // Then sort by publish time (newer first)
           return new Date(b.publishTime).getTime() - new Date(a.publishTime).getTime();
         });
 
@@ -778,7 +771,7 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
       title: '市场洞察',
       source: '信息源',
       publishTime: '发布时间',
-      readMore: '阅读全文',
+      readMore: '阅读原文',
       like: '点赞',
       share: '分享',
       bookmark: '收藏'
@@ -787,7 +780,7 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
       title: 'Market Insights',
       source: 'Source',
       publishTime: 'Published',
-      readMore: 'Read More',
+      readMore: 'Read Original',
       like: 'Like',
       share: 'Share',
       bookmark: 'Bookmark'
@@ -797,24 +790,62 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
   const t = content[language];
 
   // 处理新闻互动
-  const handleNewsAction = (newsId: string, action: 'like' | 'bookmark') => {
-    setNewsData(prev => prev.map(news => {
-      if (news.id === newsId) {
-        if (action === 'like') {
-          return {
-            ...news,
-            isLiked: !news.isLiked,
-            likes: news.isLiked ? news.likes - 1 : news.likes + 1
-          };
-        } else if (action === 'bookmark') {
-          return {
-            ...news,
-            isBookmarked: !news.isBookmarked
-          };
+  const handleNewsAction = async (newsId: string, action: 'like' | 'bookmark') => {
+    try {
+      if (action === 'like') {
+        const response = await marketInsightsApi.toggleLike(newsId);
+        if (response.data?.success) {
+          // Update local state with server response
+          setNewsData(prev => prev.map(news => {
+            if (news.id === newsId) {
+              return {
+                ...news,
+                isLiked: response.data.isLiked,
+                likes: response.data.likes
+              };
+            }
+            return news;
+          }));
+        }
+      } else if (action === 'bookmark') {
+        const response = await marketInsightsApi.toggleBookmark(newsId);
+        if (response.data?.success) {
+          // Update local state with server response
+          setNewsData(prev => prev.map(news => {
+            if (news.id === newsId) {
+              return {
+                ...news,
+                isBookmarked: response.data.isBookmarked
+              };
+            }
+            return news;
+          }));
         }
       }
-      return news;
-    }));
+    } catch (error) {
+      console.error(`Error ${action}ing article:`, error);
+      // Optionally show an error message to the user
+    }
+  };
+
+  // 处理分享
+  const handleShare = async (newsId: string, newsUrl: string, newsTitle: string) => {
+    try {
+      // Try using Web Share API if available (mobile devices)
+      if (navigator.share) {
+        await navigator.share({
+          title: newsTitle,
+          url: newsUrl
+        });
+      } else {
+        // Fallback: Copy link to clipboard
+        await navigator.clipboard.writeText(newsUrl);
+        // Show a toast notification (you can add a toast library later)
+        alert(language === 'zh' ? '链接已复制到剪贴板' : 'Link copied to clipboard');
+      }
+    } catch (error) {
+      console.error('Error sharing article:', error);
+    }
   };
 
 
@@ -1154,15 +1185,6 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
                   <Badge variant="secondary" className="text-xs">
                     {tagHierarchy.level1.find(cat => cat.id === news.category)?.[language === 'zh' ? 'label_zh' : 'label_en']}
                   </Badge>
-                  {/* Importance Badge */}
-                  {news.importance && (
-                    <Badge
-                      variant={news.importance >= 4 ? "destructive" : news.importance >= 3 ? "default" : "secondary"}
-                      className="text-xs"
-                    >
-                      {language === 'zh' ? `重要性 ${news.importance}` : `Importance ${news.importance}`}
-                    </Badge>
-                  )}
                   {/* Bucket Badge */}
                   {news.bucket && (
                     <Badge variant="outline" className="text-xs">
@@ -1299,7 +1321,10 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
                     </button>
 
                     {/* 分享按钮 */}
-                    <button className="flex items-center gap-1 px-3 py-1 rounded-full text-sm text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition-colors">
+                    <button
+                      onClick={() => handleShare(news.id, news.url, news.title)}
+                      className="flex items-center gap-1 px-3 py-1 rounded-full text-sm text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                    >
                       <Share2 className="h-3 w-3" />
                     </button>
 
@@ -1311,14 +1336,15 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
                       <Bookmark className={`h-3 w-3 transition-colors ${news.isBookmarked ? 'fill-current text-[#009699]' : 'text-gray-500'}`} />
                     </button>
 
-                    {/* 阅读更多 */}
+                    {/* 阅读原文 */}
                     <Button
                       variant="outline"
                       size="sm"
                       className="text-xs"
                       onClick={() => {
-                        setSelectedArticleId(news.id);
-                        setIsArticleModalOpen(true);
+                        if (news.url) {
+                          window.open(news.url, '_blank', 'noopener,noreferrer');
+                        }
                       }}
                     >
                       {t.readMore}
