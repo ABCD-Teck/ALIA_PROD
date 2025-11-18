@@ -42,7 +42,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
         cu.symbol as currency_symbol
       FROM financial_statement fs
       LEFT JOIN currency cu ON fs.currency_id = cu.currency_id
-      WHERE fs.financial_statement_id = $1
+      WHERE fs.statement_id = $1
     `;
 
     const result = await pool.query(query, [id]);
@@ -83,7 +83,7 @@ router.post('/', authenticateToken, async (req, res) => {
 
     // Check if financial statement already exists for this customer and year
     const checkQuery = `
-      SELECT financial_statement_id FROM financial_statement
+      SELECT statement_id FROM financial_statement
       WHERE customer_id = $1 AND fiscal_year = $2
     `;
     const checkResult = await pool.query(checkQuery, [customer_id, fiscal_year]);
@@ -141,9 +141,9 @@ router.post('/', authenticateToken, async (req, res) => {
         cu.symbol as currency_symbol
       FROM financial_statement fs
       LEFT JOIN currency cu ON fs.currency_id = cu.currency_id
-      WHERE fs.financial_statement_id = $1
+      WHERE fs.statement_id = $1
     `;
-    const fetchResult = await pool.query(fetchQuery, [result.rows[0].financial_statement_id]);
+    const fetchResult = await pool.query(fetchQuery, [result.rows[0].statement_id]);
 
     res.status(201).json({
       statement: fetchResult.rows[0],
@@ -170,8 +170,8 @@ router.put('/:id', authenticateToken, async (req, res) => {
 
     // Check if statement exists
     const checkQuery = `
-      SELECT financial_statement_id FROM financial_statement
-      WHERE financial_statement_id = $1
+      SELECT statement_id FROM financial_statement
+      WHERE statement_id = $1
     `;
     const checkResult = await pool.query(checkQuery, [id]);
 
@@ -206,7 +206,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
         currency_id = COALESCE($6, currency_id),
         updated_at = NOW(),
         updated_by = $8
-      WHERE financial_statement_id = $7
+      WHERE statement_id = $7
       RETURNING *
     `;
 
@@ -231,7 +231,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
         cu.symbol as currency_symbol
       FROM financial_statement fs
       LEFT JOIN currency cu ON fs.currency_id = cu.currency_id
-      WHERE fs.financial_statement_id = $1
+      WHERE fs.statement_id = $1
     `;
     const fetchResult = await pool.query(fetchQuery, [id]);
 
@@ -252,8 +252,8 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 
     const query = `
       DELETE FROM financial_statement
-      WHERE financial_statement_id = $1
-      RETURNING financial_statement_id
+      WHERE statement_id = $1
+      RETURNING statement_id
     `;
 
     const result = await pool.query(query, [id]);
@@ -264,7 +264,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 
     res.json({
       message: 'Financial statement deleted successfully',
-      financial_statement_id: result.rows[0].financial_statement_id
+      statement_id: result.rows[0].statement_id
     });
   } catch (error) {
     console.error('Error deleting financial statement:', error);
