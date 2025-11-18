@@ -8,6 +8,7 @@ import { SignInPage } from './components/auth/SignInPage';
 import { SignUpPage } from './components/auth/SignUpPage';
 import { authApi, clearTokens, getAccessToken } from './services/api';
 import { AppRoutes } from './router';
+import { Toaster } from './components/ui/sonner';
 
 
 
@@ -203,6 +204,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthenticatedApp />
+      <Toaster />
     </BrowserRouter>
   );
 }

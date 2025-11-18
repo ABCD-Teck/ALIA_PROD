@@ -6,9 +6,11 @@ import { Label } from '../ui/label';
 import { Switch } from '../ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Separator } from '../ui/separator';
-import { User, Bell, Shield, Globe, Palette, Save, DollarSign } from 'lucide-react';
+import { Bell, Shield, Palette, Save, DollarSign, TrendingUp } from 'lucide-react';
 import { Language } from '../../App';
 import { useCurrency, CURRENCIES } from '../../contexts/CurrencyContext';
+import { useUnitPreference } from '../../contexts/UnitPreferenceContext';
+import { toast } from 'sonner';
 
 interface SettingsProps {
   searchQuery: string;
@@ -17,13 +19,9 @@ interface SettingsProps {
 
 export function Settings({ searchQuery, language }: SettingsProps) {
   const { selectedCurrency, setSelectedCurrency, refreshRates, lastUpdated } = useCurrency();
+  const { financialUnit, setFinancialUnit } = useUnitPreference();
 
   const [settings, setSettings] = useState({
-    firstName: 'Andrew',
-    lastName: 'Chen',
-    email: 'andrew.chen@company.com',
-    phone: '+1 555 0123',
-    role: 'Sales Manager',
     notifications: {
       email: true,
       push: true,
@@ -45,16 +43,12 @@ export function Settings({ searchQuery, language }: SettingsProps) {
   const content = {
     zh: {
       title: '设置',
-      profile: '个人资料',
+      financialDisplay: '财务显示',
+      financialUnit: '财务单位',
       notifications: '通知',
       privacy: '隐私',
       appearance: '外观',
       currency: '货币设置',
-      firstName: '名',
-      lastName: '姓',
-      email: '邮箱',
-      phone: '电话',
-      role: '职位',
       emailNotifications: '邮件通知',
       pushNotifications: '推送通知',
       smsNotifications: '短信通知',
@@ -69,6 +63,9 @@ export function Settings({ searchQuery, language }: SettingsProps) {
       refreshRates: '刷新汇率',
       lastUpdated: '最后更新',
       save: '保存',
+      hundredMillion: '亿',
+      million: '百万',
+      financialUnitDescription: '选择财务数据的显示单位',
       themes: {
         light: '浅色',
         dark: '深色',
@@ -81,16 +78,12 @@ export function Settings({ searchQuery, language }: SettingsProps) {
     },
     en: {
       title: 'Settings',
-      profile: 'Profile',
+      financialDisplay: 'Financial Display',
+      financialUnit: 'Financial Unit',
       notifications: 'Notifications',
       privacy: 'Privacy',
       appearance: 'Appearance',
       currency: 'Currency Settings',
-      firstName: 'First Name',
-      lastName: 'Last Name',
-      email: 'Email',
-      phone: 'Phone',
-      role: 'Role',
       emailNotifications: 'Email notifications',
       pushNotifications: 'Push notifications',
       smsNotifications: 'SMS notifications',
@@ -105,6 +98,9 @@ export function Settings({ searchQuery, language }: SettingsProps) {
       refreshRates: 'Refresh Rates',
       lastUpdated: 'Last Updated',
       save: 'Save',
+      hundredMillion: 'Hundred Million',
+      million: 'Million',
+      financialUnitDescription: 'Choose the display unit for financial data',
       themes: {
         light: 'Light',
         dark: 'Dark',
@@ -119,12 +115,6 @@ export function Settings({ searchQuery, language }: SettingsProps) {
 
   const t = content[language];
 
-  const handleInputChange = (field: string, value: string) => {
-    setSettings(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
 
   const handleNotificationChange = (field: string, value: boolean) => {
     setSettings(prev => ({
@@ -156,12 +146,24 @@ export function Settings({ searchQuery, language }: SettingsProps) {
     }));
   };
 
+  const handleSave = () => {
+    // Show success toast
+    toast.success(
+      language === 'zh' ? '设置已保存' : 'Settings saved successfully',
+      {
+        description: language === 'zh'
+          ? '您的设置已成功保存'
+          : 'Your settings have been saved successfully'
+      }
+    );
+  };
+
   const sections = [
     {
-      id: 'profile',
-      title: t.profile,
-      icon: User,
-      searchable: [t.profile, t.firstName, t.lastName, t.email, t.phone, t.role]
+      id: 'financialDisplay',
+      title: t.financialDisplay,
+      icon: TrendingUp,
+      searchable: [t.financialDisplay, t.financialUnit]
     },
     {
       id: 'notifications',
@@ -212,48 +214,29 @@ export function Settings({ searchQuery, language }: SettingsProps) {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                {section.id === 'profile' && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {section.id === 'financialDisplay' && (
+                  <div className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="firstName">{t.firstName}</Label>
-                      <Input
-                        id="firstName"
-                        value={settings.firstName}
-                        onChange={(e) => handleInputChange('firstName', e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="lastName">{t.lastName}</Label>
-                      <Input
-                        id="lastName"
-                        value={settings.lastName}
-                        onChange={(e) => handleInputChange('lastName', e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="email">{t.email}</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={settings.email}
-                        onChange={(e) => handleInputChange('email', e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="phone">{t.phone}</Label>
-                      <Input
-                        id="phone"
-                        value={settings.phone}
-                        onChange={(e) => handleInputChange('phone', e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2 md:col-span-2">
-                      <Label htmlFor="role">{t.role}</Label>
-                      <Input
-                        id="role"
-                        value={settings.role}
-                        onChange={(e) => handleInputChange('role', e.target.value)}
-                      />
+                      <Label>{t.financialUnit}</Label>
+                      <Select
+                        value={financialUnit}
+                        onValueChange={(value: 'hundred-million' | 'million') => setFinancialUnit(value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="hundred-million">
+                            {t.hundredMillion} (100,000,000)
+                          </SelectItem>
+                          <SelectItem value="million">
+                            {t.million} (1,000,000)
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        {t.financialUnitDescription}
+                      </p>
                     </div>
                   </div>
                 )}
@@ -435,7 +418,7 @@ export function Settings({ searchQuery, language }: SettingsProps) {
       </div>
 
       <div className="flex justify-end">
-        <Button>
+        <Button onClick={handleSave}>
           <Save className="mr-2 h-4 w-4" />
           {t.save}
         </Button>

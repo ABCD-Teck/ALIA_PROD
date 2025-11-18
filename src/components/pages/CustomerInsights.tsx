@@ -16,6 +16,7 @@ import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
 import { Language, CustomerInsightsTab } from '../../App';
 import * as api from '../../services/api';
 import { CURRENCIES } from '../../contexts/CurrencyContext';
+import { useUnitPreference } from '../../contexts/UnitPreferenceContext';
 
 interface CustomerInsightsProps {
   searchQuery: string;
@@ -43,6 +44,7 @@ const COUNTRY_LABELS: Record<string, { zh: string; en: string }> = {
 export function CustomerInsights({ searchQuery, language }: CustomerInsightsProps) {
   const navigate = useNavigate();
   const { customerId: urlCustomerId, tab: urlTab } = useParams<{ customerId?: string; tab?: string }>();
+  const { getUnitDivider, getUnitLabel } = useUnitPreference();
 
   // Get current tab from URL, default to 'overview'
   const currentTab = (urlTab as CustomerInsightsTab) || 'overview';
@@ -689,7 +691,7 @@ const allCompaniesForDropdown = [
 
     const fallbackMarketCap =
       cust.market_cap !== null && cust.market_cap !== undefined
-        ? `¥${Math.round(Number(cust.market_cap) / 1e8)}亿`
+        ? `¥${Math.round(Number(cust.market_cap) / getUnitDivider())}${getUnitLabel(language)}`
         : 'N/A';
 
     const typeLabels = getCustomerTypeLabels(cust.customer_type);
@@ -884,8 +886,8 @@ const allCompaniesForDropdown = [
     const latestStatement = sortedStatements[0];
     const currencySymbol =
       (latestStatement && latestStatement.currency_symbol) || (language === 'zh' ? '¥' : '$');
-    const revenueDivider = language === 'zh' ? 1e8 : 1e9;
-    const revenueUnitSuffix = language === 'zh' ? '亿' : 'B';
+    const revenueDivider = getUnitDivider();
+    const revenueUnitSuffix = getUnitLabel(language);
 
     const formatCurrencyDisplay = (value: number | null | undefined) => {
       if (value === null || value === undefined) {
@@ -909,7 +911,7 @@ const allCompaniesForDropdown = [
     };
 
     const annualData = sortedStatements.map((statement) => ({
-      financial_statement_id: statement.financial_statement_id,
+      statement_id: statement.statement_id,
       year: statement.fiscal_year,
       revenue: formatCurrencyDisplay(statement.revenue),
       profit: formatCurrencyDisplay(statement.net_profit),
@@ -1145,8 +1147,8 @@ const allCompaniesForDropdown = [
 
   const handleEditFinancialStatement = (statement: any) => {
     setEditingFinancial(statement);
-    // Use the same scale factor as display (1e8 for Chinese, 1e9 for English)
-    const revenueDivider = language === 'zh' ? 1e8 : 1e9;
+    // Use the same scale factor as display based on user preference
+    const revenueDivider = getUnitDivider();
     setFinancialFormData({
       fiscal_year: statement.fiscal_year ? String(statement.fiscal_year) : '',
       // Convert from raw value to display units (e.g., 99900000000 -> 999)
@@ -1177,8 +1179,8 @@ const allCompaniesForDropdown = [
     setFinancialFormError(null);
 
     try {
-      // Use the same scale factor as display (1e8 for Chinese, 1e9 for English)
-      const revenueDivider = language === 'zh' ? 1e8 : 1e9;
+      // Use the same scale factor as display based on user preference
+      const revenueDivider = getUnitDivider();
       const data = {
         customer_id: selectedCustomerId.toString(),
         fiscal_year: financialFormData.fiscal_year.trim(),
@@ -1195,7 +1197,7 @@ const allCompaniesForDropdown = [
       if (editingFinancial) {
         // Update existing
         const { customer_id, ...updateData } = data;
-        await api.financialStatementsApi.update(editingFinancial.financial_statement_id, updateData);
+        await api.financialStatementsApi.update(editingFinancial.statement_id, updateData);
       } else {
         // Create new
         await api.financialStatementsApi.create(data);
@@ -1221,7 +1223,7 @@ const allCompaniesForDropdown = [
     if (!financialToDelete) return;
 
     try {
-      await api.financialStatementsApi.delete(financialToDelete.financial_statement_id);
+      await api.financialStatementsApi.delete(financialToDelete.statement_id);
 
       // Refresh financial statements
       if (selectedCustomerId) {
@@ -1243,21 +1245,22 @@ const allCompaniesForDropdown = [
 
     setDeletingCustomer(true);
     try {
-      await api.customersApi.delete(selectedCustomerId.toString());
+      const response = await api.customersApi.delete(selectedCustomerId.toString());
+
+      // Check if the API call returned an error
+      if (response.error) {
+        throw new Error(response.error);
+      }
 
       // Close dialog and reset state
       setDeleteCustomerDialogOpen(false);
       setSelectedCustomerId(null);
 
-      // Refresh customer list
-      await loadCustomers();
-
-      // Navigate back to customer insights without a selected customer
-      navigate('/customer-insights');
+      // Navigate to dashboard after successful deletion
+      navigate('/');
     } catch (error) {
       console.error('Error deleting customer:', error);
       alert(language === 'zh' ? '删除客户失败，请稍后重试' : 'Failed to delete customer, please try again');
-    } finally {
       setDeletingCustomer(false);
     }
   };
@@ -1905,7 +1908,7 @@ const allCompaniesForDropdown = [
                               <td className="py-3 px-4 text-black">{item.debtRatio ?? '—'}</td>
                               {selectedCustomerId && (
                                 <td className="py-3 px-4">
-                                  {item.financial_statement_id && (
+                                  {item.statement_id && (
                                     <div className="flex gap-2">
                                       <Button
                                         variant="ghost"
@@ -1913,7 +1916,7 @@ const allCompaniesForDropdown = [
                                         onClick={() => {
                                           // Find the original statement from financialStatements
                                           const originalStatement = financialStatements.find(
-                                            s => s.financial_statement_id === item.financial_statement_id
+                                            s => s.statement_id === item.statement_id
                                           );
                                           if (originalStatement) {
                                             handleEditFinancialStatement(originalStatement);
@@ -1928,7 +1931,7 @@ const allCompaniesForDropdown = [
                                         onClick={() => {
                                           // Find the original statement from financialStatements
                                           const originalStatement = financialStatements.find(
-                                            s => s.financial_statement_id === item.financial_statement_id
+                                            s => s.statement_id === item.statement_id
                                           );
                                           if (originalStatement) {
                                             setFinancialToDelete(originalStatement);
@@ -2872,9 +2875,9 @@ const allCompaniesForDropdown = [
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deletingCustomer}>{t.cancelDelete}</AlertDialogCancel>
             <AlertDialogAction
+              variant="destructive"
               onClick={handleDeleteCustomer}
               disabled={deletingCustomer}
-              className="bg-red-600 hover:bg-red-700"
             >
               {deletingCustomer ? t.deleting : t.confirmDelete}
             </AlertDialogAction>
