@@ -191,6 +191,9 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 5;
 
+  // Expand/collapse state for news summaries
+  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
+
   // Dropdown 开关状态
   const [dropdownOpen, setDropdownOpen] = useState<{
     level1: boolean;
@@ -726,6 +729,14 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
     }));
   };
 
+  // Toggle expand/collapse for news summary
+  const toggleExpandItem = (articleId: string) => {
+    setExpandedItems(prev => ({
+      ...prev,
+      [articleId]: !prev[articleId]
+    }));
+  };
+
   // 切换dropdown状态
   const toggleDropdown = (level: 'level1' | 'level2' | 'level3' | 'timeFrame' | 'customTag') => {
     setDropdownOpen(prev => ({
@@ -1194,9 +1205,30 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
                 </div>
 
                 {/* 内容 */}
-                <p className="text-gray-700 leading-relaxed line-clamp-3">
-                  {getContent()}
-                </p>
+                <div className="space-y-2">
+                  <p className={`text-gray-700 leading-relaxed ${expandedItems[news.id] ? '' : 'line-clamp-3'}`}>
+                    {getContent()}
+                  </p>
+                  {/* Expand/Collapse button - only show if content is long enough */}
+                  {getContent().length > 150 && (
+                    <button
+                      onClick={() => toggleExpandItem(news.id)}
+                      className="text-sm text-teal-custom hover:text-teal-custom-80 font-medium flex items-center gap-1 transition-colors"
+                    >
+                      {expandedItems[news.id] ? (
+                        <>
+                          <ChevronUp className="h-4 w-4" />
+                          <span>{language === 'zh' ? '收起' : 'Show Less'}</span>
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="h-4 w-4" />
+                          <span>{language === 'zh' ? '展开全文' : 'Show More'}</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
 
                 {/* Custom Tags Section */}
                 <div className="space-y-2">
