@@ -1,0 +1,65 @@
+name: Translate Missing Chinese Titles
+
+on:
+  # 手动触发
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'Maximum number of articles to translate'
+        required: false
+        default: '50'
+      dry_run:
+        description: 'Dry run mode (no changes)'
+        required: false
+        type: boolean
+        default: false
+
+  # 每天早上 8 点 UTC (北京时间下午 4 点) 自动运行
+  schedule:
+    - cron: '0 8 * * *'
+
+jobs:
+  translate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run translation script
+        env:
+          PGHOST: ${{ secrets.PGHOST }}
+          PGPORT: ${{ secrets.PGPORT }}
+          PGDATABASE_MIA: ${{ secrets.PGDATABASE_MIA }}
+          PGUSER: ${{ secrets.PGUSER }}
+          PGPASSWORD: ${{ secrets.PGPASSWORD }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          # 设置参数
+          LIMIT="${{ github.event.inputs.limit || '50' }}"
+          DRY_RUN_FLAG=""
+
+          if [ "${{ github.event.inputs.dry_run }}" == "true" ]; then
+            DRY_RUN_FLAG="--dry-run"
+          fi
+
+          # 运行翻译脚本
+          node scripts/database/batch_translate_titles.js --limit $LIMIT $DRY_RUN_FLAG
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Translation Job Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Limit:** ${{ github.event.inputs.limit || '50' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Dry Run:** ${{ github.event.inputs.dry_run || 'false' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Time:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
