@@ -1,22 +1,18 @@
 name: Translate Missing Chinese Titles
 
 on:
-  # 手动触发
+  # 仅手动触发
   workflow_dispatch:
     inputs:
       limit:
-        description: 'Maximum number of articles to translate'
+        description: '翻译文章数量上限'
         required: false
         default: '50'
       dry_run:
-        description: 'Dry run mode (no changes)'
+        description: '仅统计模式（不修改数据库）'
         required: false
         type: boolean
         default: false
-
-  # 每天早上 8 点 UTC (北京时间下午 4 点) 自动运行
-  schedule:
-    - cron: '0 8 * * *'
 
 jobs:
   translate:
