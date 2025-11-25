@@ -8,11 +8,6 @@ on:
         description: '翻译文章数量上限'
         required: false
         default: '50'
-      dry_run:
-        description: '仅统计模式（不修改数据库）'
-        required: false
-        type: boolean
-        default: false
 
 jobs:
   translate:
@@ -40,22 +35,11 @@ jobs:
           PGPASSWORD: ${{ secrets.PGPASSWORD }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          # 设置参数
-          LIMIT="${{ github.event.inputs.limit || '50' }}"
-          DRY_RUN_FLAG=""
-
-          if [ "${{ github.event.inputs.dry_run }}" == "true" ]; then
-            DRY_RUN_FLAG="--dry-run"
-          fi
-
-          # 运行翻译脚本
-          node scripts/database/batch_translate_titles.js --limit $LIMIT $DRY_RUN_FLAG
+          node scripts/database/batch_translate_titles.js --limit ${{ github.event.inputs.limit || '50' }}
 
       - name: Summary
         if: always()
         run: |
-          echo "## Translation Job Summary" >> $GITHUB_STEP_SUMMARY
-          echo "- **Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Limit:** ${{ github.event.inputs.limit || '50' }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Dry Run:** ${{ github.event.inputs.dry_run || 'false' }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Time:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "## 翻译任务完成" >> $GITHUB_STEP_SUMMARY
+          echo "- **翻译数量上限:** ${{ github.event.inputs.limit || '50' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **执行时间:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
