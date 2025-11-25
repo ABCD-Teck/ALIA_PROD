@@ -106,6 +106,7 @@ router.get('/articles', authenticateToken, async (req, res) => {
       SELECT
         na.news_id,
         na.title,
+        na.title_zh,
         na.url,
         na.published_at,
         na.source,
@@ -236,7 +237,7 @@ router.get('/articles', authenticateToken, async (req, res) => {
     const articles = result.rows.map(article => ({
       id: article.news_id,
       title_en: article.title,
-      title_zh: '', // Chinese title not yet implemented - frontend will auto-translate
+      title_zh: article.title_zh || '', // Chinese title from database
       content_en: article.summary_en || '',
       content_zh: article.summary_zh || '', // Chinese summary from database
       ai_summary_en: article.summary_en || '',
@@ -347,7 +348,7 @@ router.get('/article/:id', authenticateToken, async (req, res) => {
     res.json({
       id: article.news_id,
       title_en: article.title,
-      title_zh: '', // Chinese title not yet implemented - frontend will auto-translate
+      title_zh: article.title_zh || '', // Chinese title from database
       content_en: article.summary_en || article.text,
       content_zh: article.summary_zh || '', // Chinese summary from database
       ai_summary_en: article.summary_en || '',
