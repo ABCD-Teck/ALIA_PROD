@@ -6,14 +6,16 @@
  * - Unexpected asterisk characters in summaries
  *
  * Actions:
- * 1. Identify articles with mixed Chinese-German content
- * 2. Clear problematic translations (set to NULL for re-translation)
- * 3. Option to delete articles that cannot be fixed
+ * 1. Scan ALL articles in the database (no date limit)
+ * 2. Identify articles with mixed Chinese-German content
+ * 3. Clear problematic translations (set to NULL for re-translation)
+ * 4. Option to delete articles that cannot be fixed
  *
  * Usage:
  *   node cleanup_mixed_language.js              # Dry run (default)
  *   node cleanup_mixed_language.js --execute    # Actually perform cleanup
  *   node cleanup_mixed_language.js --delete     # Delete problematic articles
+ *   node cleanup_mixed_language.js --verbose    # Show detailed output
  */
 
 require('dotenv').config({ path: require('path').join(__dirname, '../../../.env') });
@@ -117,9 +119,14 @@ function analyzeText(text, fieldName) {
 // ====== Main Functions ======
 
 async function findProblematicArticles() {
-  console.log('\n📊 Scanning database for problematic articles...\n');
+  console.log('\n📊 Scanning ALL articles in database...\n');
 
-  // Query all recent articles, especially from German sources
+  // Get total count first
+  const countResult = await miaPool.query('SELECT COUNT(*) as total FROM news_article');
+  const totalArticles = parseInt(countResult.rows[0].total);
+  console.log(`📈 Total articles in database: ${totalArticles}\n`);
+
+  // Query ALL articles (no date filter) - scan entire database
   const query = `
     SELECT
       news_id,
@@ -129,19 +136,27 @@ async function findProblematicArticles() {
       summary_zh,
       url,
       source,
-      published_at,
-      text
+      published_at
     FROM news_article
-    WHERE published_at >= '2024-10-01'
     ORDER BY published_at DESC
   `;
 
   const result = await miaPool.query(query);
-  console.log(`Found ${result.rows.length} articles to analyze\n`);
+  console.log(`🔍 Analyzing ${result.rows.length} articles for issues...\n`);
 
   const problematicArticles = [];
+  let processedCount = 0;
+  const progressInterval = Math.max(1, Math.floor(result.rows.length / 10));
 
   for (const article of result.rows) {
+    processedCount++;
+
+    // Show progress every 10%
+    if (processedCount % progressInterval === 0) {
+      const percent = Math.round((processedCount / result.rows.length) * 100);
+      process.stdout.write(`   Progress: ${percent}% (${processedCount}/${result.rows.length})\r`);
+    }
+
     const problems = [];
 
     // Analyze each text field
@@ -172,50 +187,12 @@ async function findProblematicArticles() {
     }
   }
 
-  // Also specifically search for sueddeutsche articles
-  const sueddeutscheQuery = `
-    SELECT
-      news_id,
-      title,
-      title_zh,
-      summary_en,
-      summary_zh,
-      url,
-      source,
-      published_at
-    FROM news_article
-    WHERE LOWER(url) LIKE '%sueddeutsche%'
-       OR LOWER(source) LIKE '%sueddeutsche%'
-       OR LOWER(source) LIKE '%süddeutsche%'
-    ORDER BY published_at DESC
-  `;
+  console.log(`\n✅ Analysis complete: ${problematicArticles.length} problematic articles found\n`);
 
-  const sueddeutscheResult = await miaPool.query(sueddeutscheQuery);
-  console.log(`Found ${sueddeutscheResult.rows.length} Süddeutsche Zeitung articles\n`);
-
-  // Add any sueddeutsche articles not already in the list
-  for (const article of sueddeutscheResult.rows) {
-    if (!problematicArticles.find(a => a.news_id === article.news_id)) {
-      const problems = [];
-
-      const titleZhAnalysis = analyzeText(article.title_zh, 'title_zh');
-      if (titleZhAnalysis) problems.push(titleZhAnalysis);
-
-      const summaryZhAnalysis = analyzeText(article.summary_zh, 'summary_zh');
-      if (summaryZhAnalysis) problems.push(summaryZhAnalysis);
-
-      if (problems.length > 0) {
-        problematicArticles.push({
-          news_id: article.news_id,
-          title: article.title,
-          source: article.source,
-          url: article.url,
-          published_at: article.published_at,
-          is_sueddeutsche: true,
-          problems
-        });
-      }
-    }
+  // Count Süddeutsche articles
+  const sueddeutscheCount = problematicArticles.filter(a => a.is_sueddeutsche).length;
+  if (sueddeutscheCount > 0) {
+    console.log(`🇩🇪 Süddeutsche Zeitung articles with issues: ${sueddeutscheCount}\n`);
   }
 
   return problematicArticles;
@@ -226,41 +203,114 @@ async function clearTranslations(articles) {
 
   let cleared = 0;
   let failed = 0;
+  let skipped = 0;
+
+  // Group articles by which fields need to be cleared for batch processing
+  const titleZhOnly = [];
+  const summaryZhOnly = [];
+  const bothFields = [];
 
   for (const article of articles) {
-    const fieldsToNull = [];
+    const fieldsToNull = new Set();
 
     for (const problem of article.problems) {
       if (problem.field === 'title_zh' || problem.field === 'summary_zh') {
-        if (!fieldsToNull.includes(problem.field)) {
-          fieldsToNull.push(problem.field);
-        }
+        fieldsToNull.add(problem.field);
       }
     }
 
-    if (fieldsToNull.length === 0) continue;
+    if (fieldsToNull.size === 0) {
+      skipped++;
+      continue;
+    }
 
-    const setClause = fieldsToNull.map(f => `${f} = NULL`).join(', ');
-    const query = `UPDATE news_article SET ${setClause}, updated_at = NOW() WHERE news_id = $1`;
-
-    if (executeMode) {
-      try {
-        await miaPool.query(query, [article.news_id]);
-        cleared++;
-        if (verboseMode) {
-          console.log(`  ✓ Cleared ${fieldsToNull.join(', ')} for article ${article.news_id}`);
-        }
-      } catch (error) {
-        failed++;
-        console.error(`  ✗ Failed to clear article ${article.news_id}:`, error.message);
-      }
+    if (fieldsToNull.has('title_zh') && fieldsToNull.has('summary_zh')) {
+      bothFields.push(article.news_id);
+    } else if (fieldsToNull.has('title_zh')) {
+      titleZhOnly.push(article.news_id);
     } else {
-      console.log(`  [DRY-RUN] Would clear ${fieldsToNull.join(', ')} for article ${article.news_id}`);
-      cleared++;
+      summaryZhOnly.push(article.news_id);
     }
   }
 
-  return { cleared, failed };
+  if (executeMode) {
+    // Use transactions for batch updates
+    const client = await miaPool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // Batch update: both fields
+      if (bothFields.length > 0) {
+        console.log(`   Clearing title_zh AND summary_zh for ${bothFields.length} articles...`);
+        const result = await client.query(
+          `UPDATE news_article SET title_zh = NULL, summary_zh = NULL, updated_at = NOW()
+           WHERE news_id = ANY($1)`,
+          [bothFields]
+        );
+        cleared += result.rowCount;
+        if (verboseMode) {
+          bothFields.forEach(id => console.log(`     ✓ Cleared both fields for ${id}`));
+        }
+      }
+
+      // Batch update: title_zh only
+      if (titleZhOnly.length > 0) {
+        console.log(`   Clearing title_zh for ${titleZhOnly.length} articles...`);
+        const result = await client.query(
+          `UPDATE news_article SET title_zh = NULL, updated_at = NOW()
+           WHERE news_id = ANY($1)`,
+          [titleZhOnly]
+        );
+        cleared += result.rowCount;
+        if (verboseMode) {
+          titleZhOnly.forEach(id => console.log(`     ✓ Cleared title_zh for ${id}`));
+        }
+      }
+
+      // Batch update: summary_zh only
+      if (summaryZhOnly.length > 0) {
+        console.log(`   Clearing summary_zh for ${summaryZhOnly.length} articles...`);
+        const result = await client.query(
+          `UPDATE news_article SET summary_zh = NULL, updated_at = NOW()
+           WHERE news_id = ANY($1)`,
+          [summaryZhOnly]
+        );
+        cleared += result.rowCount;
+        if (verboseMode) {
+          summaryZhOnly.forEach(id => console.log(`     ✓ Cleared summary_zh for ${id}`));
+        }
+      }
+
+      await client.query('COMMIT');
+      console.log(`\n   ✅ Transaction committed successfully`);
+    } catch (error) {
+      await client.query('ROLLBACK');
+      console.error(`\n   ❌ Transaction failed, rolled back:`, error.message);
+      failed = bothFields.length + titleZhOnly.length + summaryZhOnly.length;
+      cleared = 0;
+    } finally {
+      client.release();
+    }
+  } else {
+    // Dry run mode
+    console.log(`   [DRY-RUN] Would clear title_zh AND summary_zh for ${bothFields.length} articles`);
+    console.log(`   [DRY-RUN] Would clear title_zh only for ${titleZhOnly.length} articles`);
+    console.log(`   [DRY-RUN] Would clear summary_zh only for ${summaryZhOnly.length} articles`);
+    cleared = bothFields.length + titleZhOnly.length + summaryZhOnly.length;
+
+    if (verboseMode) {
+      console.log('\n   Article IDs that would be modified:');
+      [...bothFields, ...titleZhOnly, ...summaryZhOnly].slice(0, 20).forEach(id => {
+        console.log(`     - ${id}`);
+      });
+      const total = bothFields.length + titleZhOnly.length + summaryZhOnly.length;
+      if (total > 20) {
+        console.log(`     ... and ${total - 20} more`);
+      }
+    }
+  }
+
+  return { cleared, failed, skipped };
 }
 
 async function deleteArticles(articles) {
@@ -269,36 +319,66 @@ async function deleteArticles(articles) {
   let deleted = 0;
   let failed = 0;
 
-  for (const article of articles) {
-    // Only delete articles with severe issues
+  // Filter to only articles with severe issues
+  const articlesToDelete = articles.filter(article => {
     const severeIssues = article.problems.some(p =>
       p.issues.includes('garbage_translation') ||
       (p.issues.includes('mixed_chinese_german') && article.is_sueddeutsche)
     );
+    return severeIssues;
+  });
 
-    if (!severeIssues) continue;
+  if (articlesToDelete.length === 0) {
+    console.log('   No articles qualify for deletion (no severe issues found)');
+    return { deleted: 0, failed: 0 };
+  }
 
-    if (executeMode && deleteMode) {
-      try {
-        // First delete from related tables
-        await miaPool.query('DELETE FROM article_tag WHERE news_id = $1', [article.news_id]);
-        await miaPool.query('DELETE FROM user_article_reactions WHERE article_id = $1', [article.news_id]);
-        await miaPool.query('DELETE FROM user_article_tags WHERE article_id = $1', [article.news_id]);
+  const idsToDelete = articlesToDelete.map(a => a.news_id);
+  console.log(`   Found ${idsToDelete.length} articles with severe issues to delete`);
 
-        // Then delete the article
-        await miaPool.query('DELETE FROM news_article WHERE news_id = $1', [article.news_id]);
-        deleted++;
-        if (verboseMode) {
-          console.log(`  ✓ Deleted article ${article.news_id}: ${article.title?.substring(0, 40)}...`);
+  if (executeMode && deleteMode) {
+    const client = await miaPool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // Batch delete from related tables first
+      console.log('   Deleting related records...');
+      await client.query('DELETE FROM article_tag WHERE news_id = ANY($1)', [idsToDelete]);
+      await client.query('DELETE FROM user_article_reactions WHERE article_id = ANY($1)', [idsToDelete]);
+      await client.query('DELETE FROM user_article_tags WHERE article_id = ANY($1)', [idsToDelete]);
+
+      // Then delete the articles
+      console.log('   Deleting articles...');
+      const result = await client.query('DELETE FROM news_article WHERE news_id = ANY($1)', [idsToDelete]);
+      deleted = result.rowCount;
+
+      await client.query('COMMIT');
+      console.log(`\n   ✅ Successfully deleted ${deleted} articles`);
+
+      if (verboseMode) {
+        articlesToDelete.slice(0, 10).forEach(a => {
+          console.log(`     - ${a.news_id}: ${a.title?.substring(0, 40)}...`);
+        });
+        if (articlesToDelete.length > 10) {
+          console.log(`     ... and ${articlesToDelete.length - 10} more`);
         }
-      } catch (error) {
-        failed++;
-        console.error(`  ✗ Failed to delete article ${article.news_id}:`, error.message);
       }
-    } else if (deleteMode) {
-      console.log(`  [DRY-RUN] Would delete article ${article.news_id}: ${article.title?.substring(0, 40)}...`);
-      deleted++;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      console.error(`\n   ❌ Delete transaction failed, rolled back:`, error.message);
+      failed = idsToDelete.length;
+    } finally {
+      client.release();
     }
+  } else if (deleteMode) {
+    console.log(`   [DRY-RUN] Would delete ${idsToDelete.length} articles:`);
+    articlesToDelete.slice(0, 10).forEach(a => {
+      console.log(`     - ${a.news_id}: ${a.title?.substring(0, 40)}...`);
+    });
+    if (articlesToDelete.length > 10) {
+      console.log(`     ... and ${articlesToDelete.length - 10} more`);
+    }
+    deleted = idsToDelete.length;
   }
 
   return { deleted, failed };
