@@ -35,7 +35,7 @@ interface MarketInsightsProps {
 const defaultTagHierarchy = {
   // 第一级：主要类别 - Will be replaced with dynamic buckets
   level1: [
-    { id: 'all', label_zh: '全部', label_en: 'All' },
+    { id: 'all', label_zh: '全部类别', label_en: 'All Categories' },
     { id: 'Macro & Central Banks', label_zh: '宏观经济与央行', label_en: 'Macro & Central Banks' },
     { id: 'Banking & Regulation', label_zh: '银行与监管', label_en: 'Banking & Regulation' },
     { id: 'Markets', label_zh: '市场', label_en: 'Markets' },
@@ -157,13 +157,15 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
   const [popularTags, setPopularTags] = useState<any[]>([]);
   const [bucketTags, setBucketTags] = useState<any[]>([]); // Top 5 tags for selected bucket
   const [userCustomTags, setUserCustomTags] = useState<any[]>([]); // User's custom tags
+  const [companies, setCompanies] = useState<any[]>([]); // All companies from news database
 
-  // Filter states (1: Bucket, 2: Tags, 3: Region, 4: TimeFrame, 5: Custom Tag)
+  // Filter states (1: Bucket, 2: Tags, 3: Region, 4: TimeFrame, 5: Custom Tag, 6: Company)
   const [selectedLevel1, setSelectedLevel1] = useState('all'); // Bucket
   const [selectedLevel2, setSelectedLevel2] = useState('all'); // Tag
   const [selectedLevel3, setSelectedLevel3] = useState('all'); // Region
-  const [selectedTimeFrame, setSelectedTimeFrame] = useState('30d'); // TimeFrame (moved to 4th position)
+  const [selectedTimeFrame, setSelectedTimeFrame] = useState('all'); // TimeFrame - Changed to 'all' to show all company articles
   const [selectedCustomTag, setSelectedCustomTag] = useState('all'); // Custom user tag filter
+  const [selectedCompany, setSelectedCompany] = useState('all'); // Company filter
 
   // Per-article tags state
   const [articleTags, setArticleTags] = useState<Record<string, string[]>>({});
@@ -202,18 +204,21 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
     level3: boolean;
     timeFrame: boolean;
     customTag: boolean;
+    company: boolean;
   }>({
     level1: false,
     level2: false,
     level3: false,
     timeFrame: false,
-    customTag: false
+    customTag: false,
+    company: false
   });
 
   // Load initial data from API
   useEffect(() => {
     loadInitialData();
     loadUserCustomTags();
+    loadCompanies();
   }, []);
 
   // Load bucket-specific tags when bucket changes
@@ -318,6 +323,46 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
     }
   };
 
+  // Load companies that exist in both CRM and have news articles
+  const loadCompanies = async () => {
+    try {
+      // First, get all customers from CRM (limit 100)
+      const customersResponse = await fetch('/api/customers?limit=100', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+        }
+      });
+      const customersData = await customersResponse.json();
+
+      // Normalize company names by removing spaces and special characters for matching
+      const normalizeCompanyName = (name: string) =>
+        name.toLowerCase().replace(/[\s\-_\.]/g, '');
+
+      const crmCompanyNamesMap = new Map(
+        customersData.customers?.map((c: any) => [
+          normalizeCompanyName(c.company_name),
+          c.company_name
+        ]) || []
+      );
+
+      // Then, get ALL companies with news articles (increase limit to get all)
+      const newsCompaniesResponse = await marketInsightsApi.getCompanies({ limit: 10000 });
+
+      if (newsCompaniesResponse.data && newsCompaniesResponse.data.companies) {
+        // Filter to only include companies that exist in CRM (using normalized names)
+        const filteredCompanies = newsCompaniesResponse.data.companies.filter((company: any) =>
+          crmCompanyNamesMap.has(normalizeCompanyName(company.name))
+        );
+
+        console.log(`Loaded ${filteredCompanies.length} companies that exist in both CRM and news database (out of ${newsCompaniesResponse.data.companies.length} total news companies)`);
+        setCompanies(filteredCompanies);
+      }
+    } catch (err) {
+      console.error('Failed to load companies:', err);
+      setCompanies([]);
+    }
+  };
+
   // Load buckets, regions, and tags from API
   const loadInitialData = async () => {
     try {
@@ -328,7 +373,7 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
 
         // Update Level 1 categories with real bucket data
         const dynamicLevel1 = [
-          { id: 'all', label_zh: '全部', label_en: 'All' },
+          { id: 'all', label_zh: '全部类别', label_en: 'All Categories' },
           ...bucketsResponse.data.buckets.map((bucket: any) => ({
             id: bucket.name,
             label_zh: bucket.name === 'Macro & Central Banks' ? '宏观经济与央行' :
@@ -420,6 +465,9 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
       // Get custom tag filter
       const customTag = selectedCustomTag === 'all' ? undefined : selectedCustomTag;
 
+      // Get company filter
+      const companyName = selectedCompany === 'all' ? undefined : selectedCompany;
+
       // Use searchQuery for search
       let searchTerms = searchQuery?.trim() || undefined;
 
@@ -432,6 +480,7 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
         search: searchTerms,
         tag_code: tagCode, // NEW: Use tag_code instead of adding to search
         custom_tag: customTag, // NEW: Filter by custom user tags
+        company: companyName, // NEW: Filter by company
         limit: limit,
         offset: currentOffset
       });
@@ -487,7 +536,7 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
   useEffect(() => {
     setOffset(0);
     loadArticles(false);
-  }, [selectedLevel1, selectedLevel2, selectedLevel3, selectedTimeFrame, selectedCustomTag, searchQuery]);
+  }, [selectedLevel1, selectedLevel2, selectedLevel3, selectedTimeFrame, selectedCustomTag, selectedCompany, searchQuery]);
 
   // Auto-translate content for Chinese interface
   const autoTranslate = async (articleId: string, text: string, type: 'title' | 'content' | 'source') => {
@@ -739,11 +788,29 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
   };
 
   // 切换dropdown状态
-  const toggleDropdown = (level: 'level1' | 'level2' | 'level3' | 'timeFrame' | 'customTag') => {
-    setDropdownOpen(prev => ({
-      ...prev,
-      [level]: !prev[level]
-    }));
+  const toggleDropdown = (level: 'level1' | 'level2' | 'level3' | 'timeFrame' | 'customTag' | 'company') => {
+    setDropdownOpen(prev => {
+      const isCurrentlyOpen = prev[level];
+
+      // If it's currently open, just close it
+      if (isCurrentlyOpen) {
+        return {
+          ...prev,
+          [level]: false
+        };
+      }
+
+      // If it's currently closed, close all others and open this one
+      return {
+        level1: false,
+        level2: false,
+        level3: false,
+        timeFrame: false,
+        customTag: false,
+        company: false,
+        [level]: true
+      };
+    });
   };
 
   // 关闭所有dropdown
@@ -753,7 +820,8 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
       level2: false,
       level3: false,
       timeFrame: false,
-      customTag: false
+      customTag: false,
+      company: false
     });
   };
 
@@ -907,7 +975,9 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
                       <button
                         key={item.id}
                         onClick={() => handleLevel1Change(item.id)}
-                        className="w-full text-left px-4 py-2 text-teal-custom hover:bg-teal-custom-light transition-colors"
+                        className={`w-full text-left px-4 py-2 text-teal-custom hover:bg-teal-custom-light transition-colors ${
+                          item.id === 'all' ? 'border-b border-gray-100 font-medium' : ''
+                        }`}
                       >
                         {language === 'zh' ? item.label_zh : item.label_en}
                       </button>
@@ -943,7 +1013,9 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
                           setSelectedLevel2(item.id);
                           closeAllDropdowns();
                         }}
-                        className="w-full text-left px-4 py-2 text-teal-custom-80 hover:bg-teal-custom-light transition-colors flex justify-between"
+                        className={`w-full text-left px-4 py-2 text-teal-custom-80 hover:bg-teal-custom-light transition-colors flex justify-between ${
+                          item.id === 'all' ? 'border-b border-gray-100 font-medium' : ''
+                        }`}
                       >
                         <span>{language === 'zh' ? item.label_zh : item.label_en}</span>
                         {item.frequency > 0 && (
@@ -978,7 +1050,9 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
                           setSelectedLevel3(item.id);
                           closeAllDropdowns();
                         }}
-                        className="w-full text-left px-4 py-2 text-teal-custom-60 hover:bg-teal-custom-light transition-colors flex justify-between items-center"
+                        className={`w-full text-left px-4 py-2 text-teal-custom-60 hover:bg-teal-custom-light transition-colors flex justify-between items-center ${
+                          item.id === 'all' ? 'border-b border-gray-100 font-medium' : ''
+                        }`}
                       >
                         <span>{language === 'zh' ? item.label_zh : item.label_en}</span>
                         {(item as any).article_count > 0 && (
@@ -1015,7 +1089,9 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
                           setSelectedTimeFrame(item.id);
                           closeAllDropdowns();
                         }}
-                        className="w-full text-left px-4 py-2 text-blue-600 hover:bg-blue-50 transition-colors"
+                        className={`w-full text-left px-4 py-2 text-blue-600 hover:bg-blue-50 transition-colors ${
+                          item.id === 'all' ? 'border-b border-gray-100 font-medium' : ''
+                        }`}
                       >
                         {language === 'zh' ? item.label_zh : item.label_en}
                       </button>
@@ -1049,7 +1125,7 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
                           setSelectedCustomTag('all');
                           closeAllDropdowns();
                         }}
-                        className="w-full text-left px-4 py-2 text-purple-600 hover:bg-purple-50 transition-colors flex justify-between items-center"
+                        className="w-full text-left px-4 py-2 text-purple-600 hover:bg-purple-50 transition-colors flex justify-between items-center border-b border-gray-100 font-medium"
                       >
                         <span>{language === 'zh' ? '全部标签' : 'All Tags'}</span>
                       </button>
@@ -1073,6 +1149,55 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
                 )}
               </div>
             )}
+
+            {/* 第六级：公司/客户筛选 */}
+            <div className="relative">
+              <button
+                onClick={() => toggleDropdown('company')}
+                className="flex items-center justify-between w-full px-4 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors min-w-32"
+              >
+                <span className="text-orange-600 font-medium truncate max-w-[200px]">
+                  {selectedCompany === 'all'
+                    ? (language === 'zh' ? '全部公司' : 'All Companies')
+                    : companies.find(c => c.name === selectedCompany)?.name || selectedCompany
+                  }
+                </span>
+                {dropdownOpen.company ? <ChevronUp className="h-4 w-4 text-orange-600" /> : <ChevronDown className="h-4 w-4 text-orange-600" />}
+              </button>
+
+              {dropdownOpen.company && (
+                <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 min-w-56 max-h-80 overflow-y-auto">
+                  <div className="py-2">
+                    <button
+                      onClick={() => {
+                        setSelectedCompany('all');
+                        closeAllDropdowns();
+                      }}
+                      className="w-full text-left px-4 py-2 text-orange-600 hover:bg-[#fed7aa] transition-colors flex justify-between items-center sticky top-0 bg-white border-b border-gray-100 font-medium"
+                    >
+                      <span>{language === 'zh' ? '全部公司' : 'All Companies'}</span>
+                    </button>
+                    {companies.map((company) => (
+                      <button
+                        key={company.id}
+                        onClick={() => {
+                          setSelectedCompany(company.name);
+                          closeAllDropdowns();
+                        }}
+                        className="w-full text-left px-4 py-2 text-orange-600 hover:bg-[#fed7aa] transition-colors flex justify-between items-center"
+                      >
+                        <span className="truncate flex-1">{company.name}</span>
+                        {company.article_count > 0 && (
+                          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full ml-2 flex-shrink-0">
+                            {company.article_count}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
         </div>

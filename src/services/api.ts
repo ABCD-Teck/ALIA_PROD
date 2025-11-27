@@ -575,7 +575,7 @@ export const financialStatementsApi = {
   delete: async (id: string) => {
     return fetchApi<{
       message: string;
-      financial_statement_id: string;
+      statement_id: string;
     }>(`/financial-statements/${id}`, {
       method: 'DELETE',
     });
@@ -804,6 +804,40 @@ export const marketInsightsApi = {
     }>(`/market-insights/article/${articleId}/tags/${encodeURIComponent(tagName)}`, {
       method: 'DELETE',
     });
+  },
+
+  // Article reactions (like/bookmark)
+  toggleLike: async (articleId: string) => {
+    return fetchApi<{
+      success: boolean;
+      isLiked: boolean;
+      likes: number;
+    }>(`/market-insights/articles/${articleId}/like`, {
+      method: 'POST',
+    });
+  },
+
+  toggleBookmark: async (articleId: string) => {
+    return fetchApi<{
+      success: boolean;
+      isBookmarked: boolean;
+    }>(`/market-insights/articles/${articleId}/bookmark`, {
+      method: 'POST',
+    });
+  },
+
+  getBookmarks: async (params?: { limit?: number; offset?: number }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.offset) queryParams.append('offset', params.offset.toString());
+
+    const query = queryParams.toString();
+    return fetchApi<{
+      articles: any[];
+      total: number;
+      limit: number;
+      offset: number;
+    }>(`/market-insights/bookmarks${query ? `?${query}` : ''}`);
   },
 };
 
