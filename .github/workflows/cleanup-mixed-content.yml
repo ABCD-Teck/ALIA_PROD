@@ -1,0 +1,78 @@
+name: Cleanup Mixed Language Content
+
+# GitHub Issue #93: Fix Chinese-German mixed text in Market Insights
+# https://github.com/ABCD-Teck/ALIA_PROD/issues/93
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: '执行模式'
+        required: true
+        default: 'dry-run'
+        type: choice
+        options:
+          - dry-run
+          - execute
+      delete_articles:
+        description: '删除严重问题的文章'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run cleanup script
+        env:
+          PGHOST: ${{ secrets.PGHOST }}
+          PGPORT: ${{ secrets.PGPORT }}
+          PGDATABASE_MIA: ${{ secrets.PGDATABASE_MIA }}
+          PGUSER: ${{ secrets.PGUSER }}
+          PGPASSWORD: ${{ secrets.PGPASSWORD }}
+        run: |
+          echo "🧹 Running cleanup for Issue #93: Mixed Chinese-German content"
+          echo ""
+
+          ARGS=""
+          if [ "${{ github.event.inputs.mode }}" = "execute" ]; then
+            ARGS="--execute"
+            echo "⚠️  EXECUTE MODE - Changes will be applied"
+          else
+            echo "📋 DRY-RUN MODE - No changes will be made"
+          fi
+
+          if [ "${{ github.event.inputs.delete_articles }}" = "true" ]; then
+            ARGS="$ARGS --delete"
+            echo "🗑️  DELETE MODE - Problematic articles will be deleted"
+          fi
+
+          echo ""
+          node scripts/database/maintenance/cleanup_mixed_language.js $ARGS --verbose
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## 数据清洗任务完成" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 配置" >> $GITHUB_STEP_SUMMARY
+          echo "- **执行模式:** ${{ github.event.inputs.mode }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **删除文章:** ${{ github.event.inputs.delete_articles }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **执行时间:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 相关 Issue" >> $GITHUB_STEP_SUMMARY
+          echo "- [#93 - Market Insight Chinese-German Mixed](https://github.com/ABCD-Teck/ALIA_PROD/issues/93)" >> $GITHUB_STEP_SUMMARY
