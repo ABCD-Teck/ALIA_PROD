@@ -96,11 +96,17 @@ router.get('/articles', authenticateToken, async (req, res) => {
       search,
       tag_code, // NEW: Support for bucket tag filtering
       custom_tag, // NEW: Support for custom user tag filtering
+      importance,
+      min_aboutness,
       limit = 20,
       offset = 0
     } = req.query;
 
     const userId = req.user.user_id;
+
+    // Default filters to keep only relevant, in-scope articles
+    const minImportance = importance ? parseInt(importance, 10) : 3;
+    const minAboutness = min_aboutness ? parseInt(min_aboutness, 10) : 3;
 
     let query = `
       SELECT
@@ -120,6 +126,9 @@ router.get('/articles', authenticateToken, async (req, res) => {
         na.regions,
         na.countries,
         na.keywords,
+        na.aboutness,
+        na.abt_reason,
+        na.importance,
         b.name as bucket_name,
         b.description as bucket_description,
         c.name as company_name,
@@ -220,6 +229,20 @@ router.get('/articles', authenticateToken, async (req, res) => {
       paramCount++;
     }
 
+    // Filter by importance (defaults to >= 3)
+    if (!Number.isNaN(minImportance)) {
+      query += ` AND na.importance >= $${paramCount}`;
+      queryParams.push(minImportance);
+      paramCount++;
+    }
+
+    // Filter out out-of-scope/low aboutness articles (defaults to >= 3, allow null)
+    if (!Number.isNaN(minAboutness)) {
+      query += ` AND (na.aboutness IS NULL OR na.aboutness >= $${paramCount})`;
+      queryParams.push(minAboutness);
+      paramCount++;
+    }
+
     query += ` ORDER BY na.published_at DESC`;
 
     // Get total count
@@ -255,6 +278,9 @@ router.get('/articles', authenticateToken, async (req, res) => {
       regions: article.regions,
       countries: article.countries,
       keywords: article.keywords,
+      aboutness: article.aboutness,
+      aboutness_reason: article.abt_reason,
+      importance: article.importance,
       company_name: article.company_name,
       company_ticker: article.company_ticker,
       likes: parseInt(article.likes) || 0,

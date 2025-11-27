@@ -673,6 +673,7 @@ export const marketInsightsApi = {
     bucket?: string;
     region?: string;
     importance?: number;
+    min_aboutness?: number;
     company?: string;
     search?: string;
     tag_code?: string; // NEW: Support for bucket tag filtering
@@ -684,6 +685,7 @@ export const marketInsightsApi = {
     if (params?.bucket) queryParams.append('bucket', params.bucket);
     if (params?.region) queryParams.append('region', params.region);
     if (params?.importance) queryParams.append('importance', params.importance.toString());
+    if (params?.min_aboutness) queryParams.append('min_aboutness', params.min_aboutness.toString());
     if (params?.company) queryParams.append('company', params.company);
     if (params?.search) queryParams.append('search', params.search);
     if (params?.tag_code) queryParams.append('tag_code', params.tag_code); // NEW

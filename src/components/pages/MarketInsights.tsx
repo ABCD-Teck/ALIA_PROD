@@ -130,6 +130,10 @@ const timeFrameOptions = [
   { id: '90d', label_zh: '三月内', label_en: 'Last 3 Months' }
 ];
 
+// Minimum thresholds to keep results relevant
+const MIN_IMPORTANCE = 3;
+const MIN_ABOUTNESS = 3;
+
 // Mapping from Level 1 categories to MIA bucket names
 const categoryToBucketMap: Record<string, string> = {
   'macro': 'Macro & Central Banks',
@@ -481,12 +485,25 @@ export function MarketInsights({ searchQuery, language }: MarketInsightsProps) {
         tag_code: tagCode, // NEW: Use tag_code instead of adding to search
         custom_tag: customTag, // NEW: Filter by custom user tags
         company: companyName, // NEW: Filter by company
+        importance: MIN_IMPORTANCE, // Enforce minimum importance
+        min_aboutness: MIN_ABOUTNESS, // Exclude out-of-scope articles
         limit: limit,
         offset: currentOffset
       });
 
       if (response.data) {
         let articles = response.data.articles;
+
+        // Remove out-of-scope and low-importance items as a safeguard
+        articles = articles.filter((article: any) => {
+          const importanceValue = typeof article.importance === 'number' ? article.importance : null;
+          const aboutnessValue = typeof article.aboutness === 'number' ? article.aboutness : null;
+
+          const meetsImportance = importanceValue === null ? true : importanceValue >= MIN_IMPORTANCE;
+          const inScope = aboutnessValue === null ? true : aboutnessValue >= MIN_ABOUTNESS;
+
+          return meetsImportance && inScope;
+        });
 
         // Client-side filtering by time frame if needed
         if (timeFrameFilter) {
