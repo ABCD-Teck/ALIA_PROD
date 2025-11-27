@@ -176,11 +176,29 @@ async function batchTranslateTitles() {
     console.log('');
     console.log('='.repeat(60));
     console.log('Summary:');
+    console.log(`  Total missing Chinese titles: ${totalMissing}`);
+    console.log(`  Processed in this batch: ${result.rows.length}`);
     console.log(`  Successfully translated: ${successCount}`);
-    console.log(`  Skipped: ${skippedCount}`);
+    console.log(`  Skipped (already Chinese): ${skippedCount}`);
     console.log(`  Errors: ${errorCount}`);
     console.log(`  Remaining (not processed): ${Math.max(0, totalMissing - result.rows.length)}`);
     console.log('='.repeat(60));
+
+    // Output JSON stats for GitHub Actions
+    const stats = {
+      total_missing: totalMissing,
+      processed: result.rows.length,
+      translated: successCount,
+      skipped: skippedCount,
+      errors: errorCount,
+      remaining: Math.max(0, totalMissing - result.rows.length)
+    };
+    console.log(`\n::set-output name=stats::${JSON.stringify(stats)}`);
+    // Also output as GitHub Actions environment file format
+    if (process.env.GITHUB_OUTPUT) {
+      const fs = require('fs');
+      fs.appendFileSync(process.env.GITHUB_OUTPUT, `stats=${JSON.stringify(stats)}\n`);
+    }
 
   } catch (error) {
     console.error('Fatal error:', error);
